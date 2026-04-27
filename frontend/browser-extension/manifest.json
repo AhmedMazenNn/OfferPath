@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "OfferPath - Job Tracker",
+  "version": "1.0.0",
+  "description": "Automatically track job applications from LinkedIn and company websites",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://*://*",
+    "http://*://*"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.linkedin.com/*",
+        "*://*.indeed.com/*",
+        "*://*.glassdoor.com/*",
+        "*://*.lever.co/*",
+        "*://*.greenhouse.io/*",
+        "*://*.workday.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

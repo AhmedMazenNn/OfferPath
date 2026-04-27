@@ -1,0 +1,15 @@
+# FastAPI and server
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+python-multipart>=0.0.20
+
+# Database
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.0  # PostgreSQL adapter
+alembic>=1.13.0        # Database migrations
+
+# Pydantic for data validation
+pydantic>=2.10.0
+
+# Environment variables
+python-dotenv>=1.0.0

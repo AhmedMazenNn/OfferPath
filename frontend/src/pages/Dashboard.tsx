@@ -1,0 +1,420 @@
+import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+import {
+  Briefcase,
+  TrendingUp,
+  Percent,
+  Calendar,
+  ArrowRight,
+} from 'lucide-react'
+import { motion } from 'framer-motion'
+import {
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts'
+import { StatsCard } from '../components/ui/StatsCard'
+import { StatusBadge } from '../components/ui/StatusBadge'
+import { useAppContext } from '../context/AppContext'
+import type { Application, ApplicationStatus } from '../types'
+export function Dashboard() {
+  const { applications } = useAppContext()
+  const stats = useMemo(() => {
+    const total = applications.length
+    const active = applications.filter(
+      (app) => app.status !== 'rejected' && app.status !== 'offer',
+    ).length
+    const responses = applications.filter(
+      (app) => app.status !== 'applied',
+    ).length
+    const responseRate = total > 0 ? Math.round((responses / total) * 100) : 0
+    const today = new Date()
+    const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
+    const upcomingInterviews = applications.filter((app) => {
+      if (!app.interviewDate) return false
+      const interviewDate = new Date(app.interviewDate)
+      return interviewDate >= today && interviewDate <= weekFromNow
+    }).length
+    return {
+      total,
+      active,
+      responseRate,
+      upcomingInterviews,
+    }
+  }, [applications])
+  const statusGroups = useMemo(() => {
+    const groups: Record<ApplicationStatus, Application[]> = {
+      applied: [],
+      screening: [],
+      interview: [],
+      offer: [],
+      rejected: [],
+    }
+    applications.forEach((app) => {
+      groups[app.status].push(app)
+    })
+    return groups
+  }, [applications])
+  const pieData = useMemo(() => {
+    return [
+      {
+        name: 'Applied',
+        value: statusGroups.applied.length,
+        color: '#3b82f6',
+      },
+      {
+        name: 'Screening',
+        value: statusGroups.screening.length,
+        color: '#eab308',
+      },
+      {
+        name: 'Interview',
+        value: statusGroups.interview.length,
+        color: '#a855f7',
+      },
+      {
+        name: 'Offer',
+        value: statusGroups.offer.length,
+        color: '#22c55e',
+      },
+      {
+        name: 'Rejected',
+        value: statusGroups.rejected.length,
+        color: '#ef4444',
+      },
+    ].filter((item) => item.value > 0)
+  }, [statusGroups])
+  const timelineData = useMemo(() => {
+    const weeks: Record<string, number> = {}
+    applications.forEach((app) => {
+      const date = new Date(app.appliedDate)
+      const weekStart = new Date(date)
+      weekStart.setDate(date.getDate() - date.getDay())
+      const weekKey = weekStart.toISOString().split('T')[0]
+      weeks[weekKey] = (weeks[weekKey] || 0) + 1
+    })
+    return Object.entries(weeks)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-8)
+      .map(([date, count]) => ({
+        date: new Date(date).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+        }),
+        applications: count,
+      }))
+  }, [applications])
+  const recentApplications = useMemo(() => {
+    return [...applications]
+      .sort(
+        (a, b) =>
+          new Date(b.appliedDate).getTime() - new Date(a.appliedDate).getTime(),
+      )
+      .slice(0, 6)
+  }, [applications])
+  const [activeTab, setActiveTab] = useState<ApplicationStatus>('applied')
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+          Dashboard
+        </h1>
+        <p className="mt-1 text-slate-600 dark:text-slate-400">
+          Track your job search progress
+        </p>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatsCard
+          icon={Briefcase}
+          label="Total Applications"
+          value={stats.total}
+          delay={0}
+        />
+        <StatsCard
+          icon={TrendingUp}
+          label="Active"
+          value={stats.active}
+          delay={0.1}
+        />
+        <StatsCard
+          icon={Percent}
+          label="Response Rate"
+          value={`${stats.responseRate}%`}
+          delay={0.2}
+        />
+        <StatsCard
+          icon={Calendar}
+          label="Upcoming Interviews"
+          value={stats.upcomingInterviews}
+          delay={0.3}
+        />
+      </div>
+
+      {/* Status Tabs */}
+      <motion.div
+        initial={{
+          opacity: 0,
+          y: 20,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+        transition={{
+          delay: 0.4,
+        }}
+        className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700"
+      >
+        <div className="border-b border-slate-200 dark:border-slate-700">
+          <div className="flex overflow-x-auto">
+            {(
+              [
+                'applied',
+                'screening',
+                'interview',
+                'offer',
+                'rejected',
+              ] as ApplicationStatus[]
+            ).map((status) => (
+              <button
+                key={status}
+                onClick={() => setActiveTab(status)}
+                className={`flex-1 min-w-[120px] px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === status ? 'border-primary-600 text-primary-600 dark:text-primary-400' : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}
+              >
+                <span className="capitalize">{status}</span>
+                <span className="ml-2 text-xs">
+                  ({statusGroups[status].length})
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="p-6">
+          {statusGroups[activeTab].length === 0 ? (
+            <p className="text-center text-slate-500 dark:text-slate-400 py-8">
+              No applications in this status
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {statusGroups[activeTab].slice(0, 5).map((app) => (
+                <Link
+                  key={app.id}
+                  to={`/applications/${app.id}`}
+                  className="block p-4 bg-slate-50 dark:bg-slate-900 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold text-slate-900 dark:text-white">
+                        {app.company}
+                      </h3>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
+                        {app.role}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-slate-500 dark:text-slate-400">
+                        {new Date(app.appliedDate).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      </motion.div>
+
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Status Distribution */}
+        <motion.div
+          initial={{
+            opacity: 0,
+            y: 20,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          transition={{
+            delay: 0.5,
+          }}
+          className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6"
+        >
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+            Applications by Status
+          </h2>
+          <ResponsiveContainer width="100%" height={250}>
+            <PieChart>
+              <Pie
+                data={pieData}
+                cx="50%"
+                cy="50%"
+                innerRadius={60}
+                outerRadius={90}
+                paddingAngle={2}
+                dataKey="value"
+              >
+                {pieData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: 'white',
+                }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="mt-4 flex flex-wrap gap-3 justify-center">
+            {pieData.map((item) => (
+              <div key={item.name} className="flex items-center gap-2">
+                <div
+                  className="w-3 h-3 rounded-full"
+                  style={{
+                    backgroundColor: item.color,
+                  }}
+                />
+                <span className="text-sm text-slate-600 dark:text-slate-400">
+                  {item.name} ({item.value})
+                </span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Timeline */}
+        <motion.div
+          initial={{
+            opacity: 0,
+            y: 20,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          transition={{
+            delay: 0.6,
+          }}
+          className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6"
+        >
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+            Applications Over Time
+          </h2>
+          <ResponsiveContainer width="100%" height={250}>
+            <LineChart data={timelineData}>
+              <XAxis
+                dataKey="date"
+                stroke="#94a3b8"
+                style={{
+                  fontSize: '12px',
+                }}
+              />
+              <YAxis
+                stroke="#94a3b8"
+                style={{
+                  fontSize: '12px',
+                }}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: 'white',
+                }}
+              />
+              <Line
+                type="monotone"
+                dataKey="applications"
+                stroke="#6366f1"
+                strokeWidth={2}
+                dot={{
+                  fill: '#6366f1',
+                  r: 4,
+                }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </motion.div>
+      </div>
+
+      {/* Recent Applications */}
+      <motion.div
+        initial={{
+          opacity: 0,
+          y: 20,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+        }}
+        transition={{
+          delay: 0.7,
+        }}
+        className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700"
+      >
+        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+            Recent Applications
+          </h2>
+          <Link
+            to="/applications"
+            className="flex items-center gap-1 text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
+          >
+            View all
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+        <div className="divide-y divide-slate-200 dark:divide-slate-700">
+          {recentApplications.map((app) => (
+            <Link
+              key={app.id}
+              to={`/applications/${app.id}`}
+              className="block px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-700 rounded-lg flex items-center justify-center">
+                      <span className="text-white font-semibold text-sm">
+                        {app.company.charAt(0)}
+                      </span>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-slate-900 dark:text-white">
+                        {app.company}
+                      </h3>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
+                        {app.role}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <StatusBadge status={app.status} />
+                  <span className="text-sm text-slate-500 dark:text-slate-400">
+                    {new Date(app.appliedDate).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </motion.div>
+    </div>
+  )
+}
