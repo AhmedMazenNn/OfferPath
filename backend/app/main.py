@@ -15,7 +15,7 @@ What does this file do?
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routes import applications
+from app.routes import applications, interviews, offers, analytics, auth, admin
 
 # Create the FastAPI app
 app = FastAPI(
@@ -40,8 +40,13 @@ app.add_middleware(
 # ============================================
 # Include Routes
 # ============================================
-# This adds all the endpoints from applications.py
+# This adds all the endpoints from route files
 app.include_router(applications.router)
+app.include_router(interviews.router)
+app.include_router(offers.router)
+app.include_router(analytics.router)
+app.include_router(auth.router)
+app.include_router(admin.router)
 
 
 # ============================================

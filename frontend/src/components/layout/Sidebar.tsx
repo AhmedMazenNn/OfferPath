@@ -3,12 +3,13 @@ import {
   LayoutDashboard,
   Briefcase,
   Calendar,
-  FileText,
+  GitCompare,
+  Settings,
   BarChart3,
   ChevronLeft,
   ChevronRight,
-  GitCompare,
   LogOut,
+  Shield,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Logo } from '../ui/Logo'
@@ -21,7 +22,7 @@ interface SidebarProps {
 
 export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const location = useLocation()
-  const { logout } = useAppContext()
+  const { logout, user } = useAppContext()
 
   const navItems = [
     {
@@ -45,16 +46,25 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       label: 'Offers',
     },
     {
-      path: '/documents',
-      icon: FileText,
-      label: 'Documents',
-    },
-    {
       path: '/analytics',
       icon: BarChart3,
       label: 'Analytics',
     },
   ]
+
+  const bottomItems = [
+    {
+      path: '/settings',
+      icon: Settings,
+      label: 'Settings',
+    },
+  ]
+
+  const adminItem = user?.isAdmin ? {
+    path: '/admin',
+    icon: Shield,
+    label: 'Admin',
+  } : null
 
   return (
     <motion.aside
@@ -110,23 +120,72 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
               <Icon className="w-5 h-5 flex-shrink-0" />
               {!isCollapsed && (
                 <motion.span
-                  initial={{
-                    opacity: 0,
-                  }}
-                  animate={{
-                    opacity: 1,
-                  }}
-                  transition={{
-                    delay: 0.1,
-                  }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1 }}
                   className="text-sm font-medium"
                 >
                   {item.label}
                 </motion.span>
               )}
+</Link>
+            )
+          })}
+
+          {/* Admin Item */}
+          {adminItem && (
+            <Link
+              to={adminItem.path}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
+                location.pathname === adminItem.path
+                  ? 'bg-primary-50 dark:bg-primary-950 text-primary-700 dark:text-primary-300'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <adminItem.icon className="w-5 h-5 flex-shrink-0" />
+              {!isCollapsed && (
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1 }}
+                  className="text-sm font-medium"
+                >
+                  {adminItem.label}
+                </motion.span>
+              )}
             </Link>
-          )
-        })}
+          )}
+
+        {/* Bottom Items */}
+        <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+          {bottomItems.map((item) => {
+            const isActive = location.pathname === item.path
+            const Icon = item.icon
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
+                  isActive
+                    ? 'bg-primary-50 dark:bg-primary-950 text-primary-700 dark:text-primary-300'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <Icon className="w-5 h-5 flex-shrink-0" />
+                {!isCollapsed && (
+                  <motion.span
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.1 }}
+                    className="text-sm font-medium"
+                  >
+                    {item.label}
+                  </motion.span>
+                )}
+              </Link>
+            )
+          })}
+        </div>
       </nav>
 
       {/* Bottom Actions */}

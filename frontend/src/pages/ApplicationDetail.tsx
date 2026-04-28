@@ -1,8 +1,9 @@
+import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, ExternalLink } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useAppContext } from '../context/AppContext'
-import { StatusBadge } from '../components/ui/StatusBadge'
+import { applicationsApi } from '../services/api'
 import type { Application } from '../types'
 
 interface ApplicationDetailProps {
@@ -13,7 +14,36 @@ export function ApplicationDetail({ onEdit }: ApplicationDetailProps) {
   const { id } = useParams()
   const { applications } = useAppContext()
   
-  const app = applications.find(a => a.id === id)
+  const [app, setApp] = useState<Application | null>(
+    applications.find(a => a.id === id) || null
+  )
+  const [loading, setLoading] = useState(!app)
+
+  useEffect(() => {
+    if (!app && id) {
+      loadApplication()
+    }
+  }, [id])
+
+  const loadApplication = async () => {
+    try {
+      setLoading(true)
+      const data = await applicationsApi.get(id!)
+      setApp(data)
+    } catch (error) {
+      console.error('Failed to load application:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-slate-500">Loading application...</p>
+      </div>
+    )
+  }
 
   if (!app) {
     return (
@@ -40,12 +70,20 @@ export function ApplicationDetail({ onEdit }: ApplicationDetailProps) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800"
+          >
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Application Details</h2>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <span className="text-sm text-slate-500">Status</span>
-                <div className="mt-1"><StatusBadge status={app.status} /></div>
+                <span className="text-sm text-slate-500">Current Stage</span>
+                <div className="mt-1">
+                  <span className="inline-flex px-2 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-xs font-medium">
+                    {app.customStages?.[app.currentStageIndex || 0] || 'Applied'}
+                  </span>
+                </div>
               </div>
               <div>
                 <span className="text-sm text-slate-500">Source</span>
@@ -57,7 +95,7 @@ export function ApplicationDetail({ onEdit }: ApplicationDetailProps) {
               </div>
               <div>
                 <span className="text-sm text-slate-500">Last Updated</span>
-                <p className="mt-1 text-slate-900 dark:text-white">{new Date(app.lastUpdated).toLocaleDateString()}</p>
+                <p className="mt-1 text-slate-900 dark:text-white">{app.lastUpdated ? new Date(app.lastUpdated).toLocaleDateString() : 'N/A'}</p>
               </div>
               {app.salary && (
                 <div>
@@ -74,7 +112,12 @@ export function ApplicationDetail({ onEdit }: ApplicationDetailProps) {
             </div>
             {app.jobUrl && (
               <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                <a href={app.jobUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-primary-600 hover:text-primary-700">
+                <a
+                  href={app.jobUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-primary-600 hover:text-primary-700"
+                >
                   <ExternalLink className="w-4 h-4" />
                   View Job Posting
                 </a>
@@ -82,19 +125,28 @@ export function ApplicationDetail({ onEdit }: ApplicationDetailProps) {
             )}
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800"
+          >
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Timeline</h2>
             <div className="space-y-4">
-              {app.timeline.map((event, index) => (
-                <div key={event.id} className="flex gap-4">
+              {(app.timeline || []).map((event, index) => (
+                <div key={event.id || `timeline-${index}`} className="flex gap-4">
                   <div className="flex flex-col items-center">
                     <div className="w-3 h-3 rounded-full bg-primary-500" />
-                    {index < app.timeline.length - 1 && <div className="w-0.5 h-full bg-slate-200 dark:bg-slate-700" />}
+                    {index < (app.timeline?.length || 0) - 1 && (
+                      <div className="w-0.5 h-full bg-slate-200 dark:bg-slate-700" />
+                    )}
                   </div>
                   <div className="pb-4">
                     <p className="font-medium text-slate-900 dark:text-white">{event.stage}</p>
                     <p className="text-sm text-slate-500">{new Date(event.date).toLocaleDateString()}</p>
-                    {event.notes && <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{event.notes}</p>}
+                    {event.notes && (
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{event.notes}</p>
+                    )}
                   </div>
                 </div>
               ))}
@@ -103,11 +155,25 @@ export function ApplicationDetail({ onEdit }: ApplicationDetailProps) {
         </div>
 
         <div className="space-y-6">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800"
+          >
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Pipeline</h2>
             <div className="space-y-2">
-              {app.customStages.map((stage, index) => (
-                <div key={index} className={`p-3 rounded-lg text-sm font-medium ${index === app.currentStageIndex ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300' : index < app.currentStageIndex ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>
+              {(app.customStages || []).map((stage, index) => (
+                <div
+                  key={index}
+                  className={`p-3 rounded-lg text-sm font-medium ${
+                    index === (app.currentStageIndex || 0)
+                      ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                      : index < (app.currentStageIndex || 0)
+                      ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                  }`}
+                >
                   {stage}
                 </div>
               ))}
@@ -115,13 +181,21 @@ export function ApplicationDetail({ onEdit }: ApplicationDetailProps) {
           </motion.div>
 
           {app.notes && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800"
+            >
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Notes</h2>
               <p className="text-slate-600 dark:text-slate-400">{app.notes}</p>
             </motion.div>
           )}
 
-          <button onClick={() => onEdit(app)} className="w-full py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors">
+          <button
+            onClick={() => onEdit(app)}
+            className="w-full py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors"
+          >
             Edit Application
           </button>
         </div>

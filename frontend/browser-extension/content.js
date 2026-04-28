@@ -1,145 +1,214 @@
-// content.js - Runs on job listing pages to extract job information
+// content.js - Extracts job information from pages
 
-const JOB_SITE_CONFIGS = {
-  'linkedin.com': {
-    jobTitleSelector: '.job-card-container__title, .t-24',
-    companySelector: '.job-card-container__company-name, .t-16',
-    getJobUrl: () => window.location.href,
-    getJobId: () => {
-      const urlMatch = window.location.href.match(/linkedin\.com\/jobs\/(\d+)/);
-      return urlMatch ? urlMatch[1] : null;
-    }
-  },
-  'indeed.com': {
-    jobTitleSelector: '.jobTitle, h2[data-testid="jobsearch-JobTitle"]',
-    companySelector: '.companyName, [data-testid="companyoverview"] a',
-    getJobUrl: () => window.location.href,
-    getJobId: () => {
-      const jobKey = document.querySelector('[data-jobkey]');
-      return jobKey ? jobKey.dataset.jobkey : null;
-    }
-  },
-  'glassdoor.com': {
-    jobTitleSelector: '.job-title, h1[data-test="job-detail-title"]',
-    companySelector: '.employer-name, [data-test="employer-short-name"]',
-    getJobUrl: () => window.location.href,
-    getJobId: null
-  },
-  'default': {
-    jobTitleSelector: 'h1, [class*="title"], [class*="job-title"]',
-    companySelector: '[class*="company"], [class*="employer"]',
-    getJobUrl: () => window.location.href,
-    getJobId: null
+console.log('OfferPath: Content script loaded');
+
+// Listen for messages from popup or background
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'extractJobData' || request.action === 'getJobFromPage') {
+    const jobData = extractJobData();
+    sendResponse(jobData);
   }
-};
+  
+  if (request.action === 'getDetectedSite') {
+    sendResponse({ site: getSite() });
+  }
+  
+  return true;
+});
 
-function detectSite() {
+function getSite() {
   const hostname = window.location.hostname;
-  for (const site of Object.keys(JOB_SITE_CONFIGS)) {
-    if (hostname.includes(site)) {
-      return site;
-    }
+  const sites = ['linkedin.com', 'indeed.com', 'glassdoor.com', 'lever.co', 'greenhouse.io', 'workday.com', 'solvedhire.com'];
+  for (const site of sites) {
+    if (hostname.includes(site)) return site;
   }
   return 'default';
 }
 
 function extractJobData() {
-  const site = detectSite();
-  const config = JOB_SITE_CONFIGS[site] || JOB_SITE_CONFIGS['default'];
+  const site = getSite();
+  const hostname = window.location.hostname;
   
-  const titleEl = document.querySelector(config.jobTitleSelector);
-  const companyEl = document.querySelector(config.companySelector);
+  console.log('OfferPath: Detecting on', hostname);
   
-  const jobData = {
-    title: titleEl?.textContent?.trim() || document.title,
-    company: companyEl?.textContent?.trim() || 'Unknown Company',
-    url: config.getJobUrl(),
-    jobId: config.getJobId ? config.getJobId() : null,
-    source: site === 'default' ? 'Company Site' : `${site} Job Listing`,
+  let title = '';
+  let company = '';
+  
+  // Try LinkedIn - multiple selectors for job details
+  if (hostname.includes('linkedin.com')) {
+    // Job title - try multiple selectors
+    const titleSelectors = [
+      'h1', '.top-card-layout__title', '.job-details-skill-match-status__container h1',
+      '. jobs-details-job-details__entity-title', '[data-test-id="job-detail-title"]'
+    ];
+    for (const sel of titleSelectors) {
+      const el = document.querySelector(sel);
+      if (el?.textContent?.trim() && !el.textContent.toLowerCase().includes('sign in')) {
+        title = el.textContent.trim();
+        break;
+      }
+    }
+    
+    // Company name - multiple selectors
+    const companySelectors = [
+      '.top-card-layout__company-name', '.job-details-skill-match-status__company-name',
+      '.jobs-details-job-details__company-name', '[data-test-id="job-detail-company-name"]',
+      'a[href*="/company/"]', '.company-name'
+    ];
+    for (const sel of companySelectors) {
+      const el = document.querySelector(sel);
+      if (el?.textContent?.trim()) {
+        company = el.textContent.trim();
+        break;
+      }
+    }
+    
+    // If still no company, try from URL pattern
+    if (!company) {
+      const companyMatch = window.location.pathname.match(/\/company\/([^\/]+)/);
+      if (companyMatch) {
+        company = companyMatch[1].replace(/-/g, ' ');
+        company = company.replace(/([a-z])([A-Z])/g, '$1 $2');
+      }
+    }
+  }
+  
+  // Try Indeed
+  if (hostname.includes('indeed.com')) {
+    const titleEl = document.querySelector('[data-testid="jobsearch-JobTitle"], .jobTitle, h1.jobTitle');
+    if (titleEl?.textContent?.trim()) {
+      title = titleEl.textContent.trim();
+    }
+    
+    const companyEl = document.querySelector('[data-testid="companyOverview"], .companyName, .company');
+    if (companyEl?.textContent?.trim()) {
+      company = companyEl.textContent.trim();
+    }
+  }
+  
+  // Try Glassdoor
+  if (hostname.includes('glassdoor.com')) {
+    const titleEl = document.querySelector('[data-testid="job-title"], .jobTitle, h1');
+    if (titleEl?.textContent?.trim()) {
+      title = titleEl.textContent.trim();
+    }
+    
+    const companyEl = document.querySelector('[data-testid="employer-name"], .employer-name');
+    if (companyEl?.textContent?.trim()) {
+      company = companyEl.textContent.trim();
+    }
+  }
+  
+  // Try Lever
+  if (hostname.includes('lever.co')) {
+    const titleEl = document.querySelector('h1');
+    if (titleEl?.textContent?.trim()) {
+      title = titleEl.textContent.trim();
+    }
+    
+    const companyEl = document.querySelector('.posting-company, .company-logo-name');
+    if (companyEl?.textContent?.trim()) {
+      company = companyEl.textContent.trim();
+    }
+  }
+  
+  // Try Greenhouse
+  if (hostname.includes('greenhouse.io')) {
+    const titleEl = document.querySelector('.app-title h1, .job-title h1');
+    if (titleEl?.textContent?.trim()) {
+      title = titleEl.textContent.trim();
+    }
+    
+    const companyEl = document.querySelector('.company-name, .company-logo-name');
+    if (companyEl?.textContent?.trim()) {
+      company = companyEl.textContent.trim();
+    }
+  }
+  
+  // Generic fallback: use page title
+  if (!title || title === 'Unknown Title') {
+    const pageTitle = document.title
+      .replace(/[-|–|—|:|•|LinkedIn|Indeed|Jobs|Careers|Apply]/g, '|')
+      .split('|')
+      .filter(t => t.trim().length > 3)[0] || '';
+    
+    if (pageTitle.length > 3) {
+      title = pageTitle.trim().split(' ').slice(0, 8).join(' ');
+    }
+  }
+  
+  // Clean up title
+  title = title.replace(/^\d+\.\s*/, '').replace(/\s+/g, ' ').trim();
+  
+  // Try to extract company from page title if still unknown
+  if (!company || company === 'Unknown') {
+    const title = document.title;
+    // Try pattern like "Company - Job Title" or "Job Title at Company"
+    const atMatch = title.match(/at\s+([A-Z][a-zA-Z\s]+?)(?:\s*[-|]|$)/i);
+    const dashMatch = title.match(/^([A-Z][a-zA-Z\s]+?)\s*[-–—]\s*/i);
+    
+    if (atMatch) {
+      company = atMatch[1].trim();
+    } else if (dashMatch) {
+      company = dashMatch[1].trim();
+    }
+  }
+  
+  // Final fallback
+  title = title || document.title.split(' ').slice(0, 6).join(' ') || 'Unknown Job';
+  company = company || hostname.replace('www.', '').split('.')[0].charAt(0).toUpperCase() + hostname.replace('www.', '').split('.')[0].slice(1);
+  
+  // Clean company name
+  company = company.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/\s+/g, ' ').trim();
+  
+  console.log('OfferPath: Extracted - Title:', title, '| Company:', company);
+  
+  return {
+    title,
+    company,
+    url: window.location.href,
+    source: site === 'default' ? 'Company Site' : site,
     detectedAt: new Date().toISOString()
   };
-  
-  return jobData;
 }
 
-// Listen for messages from popup or background
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'extractJobData') {
-    const jobData = extractJobData();
-    sendResponse(jobData);
-  }
-  return true;
-});
-
-// Auto-detect button on page (for sites without structured data)
-function createDetectionOverlay() {
-  const existingOverlay = document.getElementById('offerpath-capture-btn');
-  if (existingOverlay) return;
+// Create floating capture button
+function createFloatButton() {
+  if (document.getElementById('offerpath-float-btn')) return;
   
-  const overlay = document.createElement('div');
-  overlay.id = 'offerpath-capture-btn';
-  overlay.innerHTML = `
-    <button id="offerpath-capture-trigger" title="Track with OfferPath">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-        <path d="M12 2L2 7l10 5 10-5-10-5z" fill="currentColor"/>
-        <path d="M2 17l10 5 10-5" stroke="currentColor" stroke-width="2" fill="none"/>
-        <path d="M2 12l10 5 10-5" stroke="currentColor" stroke-width="2" fill="none"/>
+  const btn = document.createElement('div');
+  btn.id = 'offerpath-float-btn';
+  btn.innerHTML = `
+    <button style="
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: #6366f1;
+      color: white;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    ">
+      <svg width="24" height="24" viewBox="0 0 32 32" fill="white">
+        <path d="M8 20L14 14L18 18L24 10" stroke="#6366f1" stroke-width="2.5" fill="none"/>
       </svg>
     </button>
   `;
-  overlay.style.cssText = `
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    z-index: 999999;
-  `;
+  btn.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:999999;';
   
-  const btn = overlay.querySelector('button');
-  btn.style.cssText = `
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    background: #6366f1;
-    color: white;
-    border: none;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.2s;
-  `;
-  btn.onmouseover = () => btn.style.transform = 'scale(1.1)';
-  btn.onmouseout = () => btn.style.transform = 'scale(1)';
-  btn.onclick = async () => {
-    const jobData = extractJobData();
-    
-    // Show success feedback
-    btn.innerHTML = '✓';
-    btn.style.background = '#10b981';
+  btn.onclick = () => {
+    const data = extractJobData();
+    chrome.runtime.sendMessage({ action: 'saveJobApplication', data });
+    btn.querySelector('button').innerHTML = '✓';
     setTimeout(() => {
-      btn.innerHTML = `
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-          <path d="M12 2L2 7l10 5 10-5-10-5z" fill="currentColor"/>
-          <path d="M2 17l10 5 10-5" stroke="currentColor" stroke-width="2" fill="none"/>
-          <path d="M2 12l10 5 10-5" stroke="currentColor" stroke-width="2" fill="none"/>
-        </svg>
-      `;
-      btn.style.background = '#6366f1';
-    }, 2000);
-    
-    // Send to background script
-    chrome.runtime.sendMessage({
-      action: 'saveJobApplication',
-      data: jobData
-    });
+      btn.querySelector('button').innerHTML = '<svg width="24" height="24" viewBox="0 0 32 32" fill="white"><path d="M8 20L14 14L18 18L24 10" stroke="#6366f1" stroke-width="2.5" fill="none"/></svg>';
+    }, 1500);
   };
   
-  document.body.appendChild(overlay);
+  document.body.appendChild(btn);
 }
 
-// Show capture button when on a known job site
-if (detectSite() !== 'default') {
-  // Delay to ensure page is loaded
-  setTimeout(createDetectionOverlay, 2000);
-}
+setTimeout(createFloatButton, 3000);

@@ -22,7 +22,6 @@ export const mockApplications: Application[] = [
       { id: createId(), stage: 'Technical', date: '2026-04-26', notes: 'Technical interview scheduled' },
     ],
     notes: 'Great opportunity to work on payment infrastructure',
-    resumeVersion: 'v3',
     interviewDate: '2026-04-28T14:00:00',
     salary: 180000,
     location: 'San Francisco, CA (Hybrid)'
@@ -42,7 +41,7 @@ export const mockApplications: Application[] = [
       { id: createId(), stage: 'Applied', date: '2026-04-18' },
       { id: createId(), stage: 'Screening', date: '2026-04-22', notes: 'Phone call scheduled' },
     ],
-    resumeVersion: 'v3',
+
     location: 'San Francisco, CA'
   },
   {
@@ -60,7 +59,7 @@ export const mockApplications: Application[] = [
       { id: createId(), stage: 'Applied', date: '2026-04-15', notes: 'Referred by Sarah from previous company' },
     ],
     notes: 'Interesting role in the platform team',
-    resumeVersion: 'v3'
+
   },
   {
     id: createId(),
@@ -82,7 +81,7 @@ export const mockApplications: Application[] = [
       { id: createId(), stage: 'Offer', date: '2026-04-24', notes: 'Received offer! $165k + equity' },
     ],
     notes: 'Amazing design tool, would love to join!',
-    resumeVersion: 'v2',
+
     salary: 165000,
     location: 'San Francisco, CA (Hybrid)'
   },
@@ -105,7 +104,7 @@ export const mockApplications: Application[] = [
       { id: createId(), stage: 'Rejected', date: '2026-04-20', notes: 'Went with another candidate' },
     ],
     notes: 'Tough competition, good interview experience',
-    resumeVersion: 'v2'
+
   },
   {
     id: createId(),
@@ -125,7 +124,7 @@ export const mockApplications: Application[] = [
       { id: createId(), stage: 'Technical', date: '2026-04-19' },
       { id: createId(), stage: 'Onsite', date: '2026-04-22', notes: 'Onsite scheduled' },
     ],
-    resumeVersion: 'v2',
+
     interviewDate: '2026-04-29T16:00:00',
     location: 'Remote'
   },
@@ -144,7 +143,7 @@ export const mockApplications: Application[] = [
       { id: createId(), stage: 'Applied', date: '2026-04-12' },
       { id: createId(), stage: 'Screening', date: '2026-04-18', notes: 'Great conversation about mobile' },
     ],
-    resumeVersion: 'v3'
+
   },
   {
     id: createId(),
@@ -163,7 +162,7 @@ export const mockApplications: Application[] = [
       { id: createId(), stage: 'Phone Screen', date: '2026-04-10' },
       { id: createId(), stage: 'Rejected', date: '2026-04-15', notes: 'Not moving forward' },
     ],
-    resumeVersion: 'v1'
+
   },
   {
     id: createId(),
@@ -180,7 +179,7 @@ export const mockApplications: Application[] = [
       { id: createId(), stage: 'Applied', date: '2026-04-14', notes: 'Found via Twitter' },
     ],
     notes: 'Beautiful product, minimalist design',
-    resumeVersion: 'v3'
+
   },
   {
     id: createId(),
@@ -196,7 +195,7 @@ export const mockApplications: Application[] = [
     timeline: [
       { id: createId(), stage: 'Applied', date: '2026-04-16' },
     ],
-    resumeVersion: 'v3'
+
   },
   {
     id: createId(),
@@ -217,7 +216,7 @@ export const mockApplications: Application[] = [
       { id: createId(), stage: 'Onsite', date: '2026-04-18' },
       { id: createId(), stage: 'Offer', date: '2026-04-23', notes: 'Great offer received - $155k + equity' },
     ],
-    resumeVersion: 'v2',
+
     salary: 155000,
     location: 'San Francisco, CA (Remote)'
   },
@@ -236,7 +235,7 @@ export const mockApplications: Application[] = [
       { id: createId(), stage: 'Applied', date: '2026-04-07', notes: 'Internal referral' },
     ],
     notes: 'Would be amazing to work on music recommendation systems',
-    resumeVersion: 'v2',
+
     location: 'New York, NY'
   },
 ]

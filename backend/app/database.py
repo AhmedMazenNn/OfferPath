@@ -51,6 +51,6 @@ def get_db():
 
 def init_db():
     """Initialize database tables."""
-    from app.models import Application, User
+    from app.models import Application, User, Interview, Offer
     Base.metadata.create_all(bind=engine)
     print("Database tables ready!")

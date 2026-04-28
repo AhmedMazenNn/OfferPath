@@ -5,9 +5,10 @@ import { TopBar } from './TopBar'
 interface LayoutProps {
   children: React.ReactNode
   onQuickLog: () => void
+  isAuthenticated?: boolean
 }
 
-export function Layout({ children, onQuickLog }: LayoutProps) {
+export function Layout({ children, onQuickLog, isAuthenticated = true }: LayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode')
@@ -25,6 +26,15 @@ export function Layout({ children, onQuickLog }: LayoutProps) {
 
   const toggleDarkMode = () => {
     setIsDarkMode(!isDarkMode)
+  }
+
+  // Don't show sidebar/topbar if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+        {children}
+      </div>
+    )
   }
 
   return (

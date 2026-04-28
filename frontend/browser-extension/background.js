@@ -1,28 +1,22 @@
 // background.js - Service worker for Chrome extension
 
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = 'http://127.0.0.1:8000/api';
 
-// Default to localhost for development
-const CONFIG = {
-  apiBaseUrl: API_BASE_URL,
-  userId: null
-};
+// Background script loaded
+console.log('OfferPath: Background script loaded');
 
 // Initialize on install
 chrome.runtime.onInstalled.addListener(() => {
   console.log('OfferPath extension installed');
-  
-  // Set default auth in storage
   chrome.storage.local.set({
-    config: CONFIG,
-    userId: 'demo-user',
+    authToken: null,
     applications: []
   });
 });
 
 // Handle messages from content.js and popup.js
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log('Background received message:', request.action);
+  console.log('Background received:', request.action);
   
   switch (request.action) {
     case 'saveJobApplication':
@@ -37,12 +31,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       extractFromActiveTab(sendResponse);
       return true;
       
-    case 'updateApiUrl':
-      updateConfig(request.config, sendResponse);
-      return true;
-      
     case 'testApi':
       testApiConnection(sendResponse);
+      return true;
+
+    case 'setAuthToken':
+      chrome.storage.local.set({ authToken: request.token, userId: request.userId });
+      sendResponse({ success: true });
       return true;
       
     default:
@@ -55,64 +50,56 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // Save job application to backend
 async function saveApplication(jobData, sendResponse) {
   try {
-    // Get user info
-    const { userId } = await chrome.storage.local.get('userId');
+    const { authToken } = await chrome.storage.local.get(['authToken']);
+    
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
     
     const applicationData = {
       company: jobData.company,
       role: jobData.title,
-      jobUrl: jobData.url,
+      job_url: jobData.url,
       source: jobData.source || 'Company Site',
-      appliedDate: new Date().toISOString().split('T')[0],
-      status: 'applied',
-      currentStageIndex: 0,
-      customStages: ['Applied', 'Screening', 'Phone Screen', 'Technical', 'Onsite', 'Offer'],
-      userId: userId || 'anonymous'
+      applied_date: new Date().toISOString().split('T')[0],
+      current_stage_index: 0,
+      custom_stages: ['Applied', 'Screening', 'Phone Screen', 'Technical', 'Onsite', 'Offer'],
     };
     
-    // Try to send to API
-    const response = await fetch(`${CONFIG.apiBaseUrl}/applications`, {
+    const response = await fetch(`${API_BASE_URL}/applications`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(applicationData)
     });
     
     if (response.ok) {
       const savedApp = await response.json();
-      
-      // Also save locally as backup
-      const { applications } = await chrome.storage.local.get('applications');
-      const updatedApps = [savedApp, ...(applications || [])];
-      await chrome.storage.local.set({ applications: updatedApps });
-      
+      console.log('OfferPath: Saved to API:', savedApp);
       sendResponse({ success: true, data: savedApp });
     } else {
-      // If API fails, save locally
-      console.log('API unavailable, saving locally');
-      const { applications } = await chrome.storage.local.get('applications');
-      const localApp = { ...applicationData, id: Date.now().toString(), locallySaved: true };
-      const updatedApps = [localApp, ...(applications || [])];
-      await chrome.storage.local.set({ applications: updatedApps });
-      
-      sendResponse({ success: true, data: localApp, local: true });
+      // API error - try to save locally
+      console.log('OfferPath: API error, saving locally');
+      throw new Error('API save failed');
     }
   } catch (error) {
-    console.error('Error saving application:', error);
+    console.error('OfferPath: Save error:', error);
     
-    // Fallback: save locally
+    // Save to local storage as fallback
     const { applications } = await chrome.storage.local.get('applications');
     const localApp = { 
       ...jobData, 
-      id: Date.now().toString(), 
-      status: 'applied',
-      currentStageIndex: 0,
-      appliedDate: new Date().toISOString().split('T')[0],
+      id: Date.now().toString(),
+      applied_date: new Date().toISOString().split('T')[0],
       locallySaved: true 
     };
-    const updatedApps = [localApp, ...(applications || [])];
-    await chrome.storage.local.set({ applications: updatedApps });
+    
+    await chrome.storage.local.set({ 
+      applications: [localApp, ...(applications || [])] 
+    });
     
     sendResponse({ success: true, data: localApp, local: true });
   }
@@ -121,7 +108,14 @@ async function saveApplication(jobData, sendResponse) {
 // Get all applications
 async function getApplications(sendResponse) {
   try {
-    const response = await fetch(`${CONFIG.apiBaseUrl}/applications`);
+    const { authToken } = await chrome.storage.local.get('authToken');
+    
+    const headers = {};
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+    
+    const response = await fetch(`${API_BASE_URL}/applications`, { headers });
     if (response.ok) {
       const data = await response.json();
       await chrome.storage.local.set({ applications: data });
@@ -130,48 +124,97 @@ async function getApplications(sendResponse) {
       throw new Error('API unavailable');
     }
   } catch (error) {
-    // Get from local storage
     const { applications } = await chrome.storage.local.get('applications');
-    sendResponse({ success: true, data: applications || [], local: true });
+    sendResponse({ success: true, data: applications || [] });
   }
 }
 
 // Extract job data from active tab
 async function extractFromActiveTab(sendResponse) {
+  console.log('OfferPath: extractFromActiveTab called');
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    
+    console.log('OfferPath: Active tab:', tab?.url);
     
     if (!tab?.id) {
       sendResponse({ error: 'No active tab' });
       return;
     }
     
-    // Send message to content script
+    // First try content script
     chrome.tabs.sendMessage(tab.id, { action: 'extractJobData' }, (response) => {
+      console.log('OfferPath: Content response:', response);
       if (chrome.runtime.lastError) {
-        sendResponse({ error: 'Could not extract from this page' });
-      } else {
+        console.log('OfferPath: Runtime error:', chrome.runtime.lastError.message);
+      } else if (response?.title && response.title !== 'Unknown') {
         sendResponse(response);
+        return;
       }
     });
+    
+    // Wait and check if content script worked, otherwise use fallback
+    setTimeout(() => {
+      const url = tab.url || '';
+      const title = tab.title || '';
+      const hostname = new URL(url).hostname || '';
+      
+      // Parse job info from title (e.g., "Software Engineer at Google - LinkedIn Jobs")
+      let jobTitle = title.split('|')[0].split('-')[0].split('–')[0].split('at')[0].trim();
+      let company = '';
+      
+      // Try to extract "at Company" from title
+      const atMatch = title.match(/\bat\s+([A-Z][a-zA-Z\s]+?)(?:\s*[-|]|$|\s)/i);
+      const dashMatch = title.match(/^([A-Z][a-zA-Z\s]+?)\s*[-–—]\s*/i);
+      
+      if (atMatch) {
+        company = atMatch[1].trim();
+      } else if (dashMatch) {
+        company = dashMatch[1].trim();
+      } else {
+        company = hostname.replace('www.', '').split('.')[0];
+      }
+      
+      // Clean up
+      jobTitle = jobTitle.replace(/job|jobs|apply|hire|opening/i, '').trim();
+      company = company.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/\s+/g, ' ').trim();
+      company = company.charAt(0).toUpperCase() + company.slice(1);
+      
+      console.log('OfferPath: Fallback extraction:', { title: jobTitle, company, url });
+      
+      sendResponse({
+        title: jobTitle || 'Unknown',
+        company: company || 'Unknown',
+        url: url,
+        source: hostname.includes('linkedin') ? 'linkedin.com' : 
+               hostname.includes('indeed') ? 'indeed.com' : 'Company Site',
+        detectedAt: new Date().toISOString()
+      });
+    }, 1500);
+    
   } catch (error) {
+    console.log('OfferPath: Extract error:', error.message);
     sendResponse({ error: error.message });
   }
 }
 
-// Update API config
-async function updateConfig(newConfig, sendResponse) {
-  Object.assign(CONFIG, newConfig);
-  await chrome.storage.local.set({ config: CONFIG });
-  sendResponse({ success: true });
-}
-
 // Test API connection
 async function testApiConnection(sendResponse) {
+  console.log('OfferPath: Testing API via background...');
   try {
-    const response = await fetch(`${CONFIG.apiBaseUrl}/applications`);
-    sendResponse({ success: response.ok, status: response.status });
+    // Use IPv4 explicitly
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    
+    const response = await fetch('http://127.0.0.1:8000/health', { 
+      signal: controller.signal 
+    });
+    clearTimeout(timeout);
+    
+    console.log('OfferPath: Background API response:', response.status);
+    sendResponse({ success: response.ok });
   } catch (error) {
+    console.error('OfferPath: Background API error:', error.message);
     sendResponse({ success: false, error: error.message });
   }
 }

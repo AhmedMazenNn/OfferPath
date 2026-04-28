@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { X, Plus, Trash2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAppContext } from '../context/AppContext'
-import type { Application, ApplicationSource, ApplicationStatus } from '../types'
+import type { Application, ApplicationSource } from '../types'
 
 interface EditApplicationModalProps {
   isOpen: boolean
@@ -27,25 +27,25 @@ export function EditApplicationModal({
         company: application.company,
         role: application.role,
         jobUrl: application.jobUrl || '',
-        status: application.status,
         source: application.source,
-        resumeVersion: application.resumeVersion || '',
         notes: application.notes || '',
-        currentStageIndex: application.currentStageIndex,
+        currentStageIndex: application.currentStageIndex || 0,
       })
-      setCustomStages([...application.customStages])
+      setCustomStages(application.customStages || [])
     }
   }, [isOpen, application])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (application) {
-      updateApplication(application.id, {
+      await updateApplication(application.id, {
         ...formData,
         customStages,
       })
     }
-    onClose()
+    setTimeout(() => {
+      onClose()
+    }, 100)
   }
 
   const handleChange = (field: keyof Application, value: unknown) => {
@@ -177,29 +177,6 @@ export function EditApplicationModal({
                           onChange={(e) => handleChange('role', e.target.value)}
                           className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                          Status *
-                        </label>
-                        <select
-                          required
-                          value={formData.status || 'applied'}
-                          onChange={(e) =>
-                            handleChange(
-                              'status',
-                              e.target.value as ApplicationStatus,
-                            )
-                          }
-                          className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                          <option value="applied">Applied</option>
-                          <option value="screening">Screening</option>
-                          <option value="interview">Interview</option>
-                          <option value="offer">Offer</option>
-                          <option value="rejected">Rejected</option>
-                        </select>
                       </div>
 
                       <div>
@@ -339,20 +316,6 @@ export function EditApplicationModal({
                       Additional Details
                     </h3>
                     <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                          Resume Version
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.resumeVersion || ''}
-                          onChange={(e) =>
-                            handleChange('resumeVersion', e.target.value)
-                          }
-                          className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        />
-                      </div>
-
                       <div>
                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                           Notes

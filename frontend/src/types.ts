@@ -20,17 +20,16 @@ export interface Application {
   role: string
   jobUrl?: string
   appliedDate: string
-  source: ApplicationSource
+  source: string
   status: ApplicationStatus
-  lastUpdated: string
-  currentStageIndex: number
-  customStages: string[]
-  timeline: TimelineEvent[]
   notes?: string
-  resumeVersion?: string
   interviewDate?: string
   salary?: number
   location?: string
+  currentStageIndex?: number
+  customStages?: string[]
+  timeline?: TimelineEvent[]
+  lastUpdated?: string
 }
 
 export interface User {
@@ -38,6 +37,40 @@ export interface User {
   name: string
   email: string
   avatar?: string
+  isAdmin?: boolean
+}
+
+export interface Interview {
+  id: string
+  applicationId: string
+  interviewType: string
+  scheduledDate: string
+  durationMinutes: number
+  interviewerName?: string
+  interviewerEmail?: string
+  location?: string
+  notes?: string
+  status: 'scheduled' | 'completed' | 'cancelled'
+  createdAt: string
+  applicationCompany?: string
+  applicationRole?: string
+}
+
+export interface Offer {
+  id: string
+  applicationId: string
+  baseSalary: number
+  currency: string
+  bonus?: number
+  equity?: string
+  benefits: string[]
+  startDate?: string
+  deadline?: string
+  status: 'pending' | 'accepted' | 'declined' | 'negotiating'
+  notes?: string
+  createdAt: string
+  applicationCompany?: string
+  applicationRole?: string
 }
 
 export const DEFAULT_STAGES = [

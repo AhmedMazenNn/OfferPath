@@ -1,53 +1,73 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts'
 import { motion } from 'framer-motion'
-import { useAppContext } from '../context/AppContext'
+import { analyticsApi } from '../services/api'
 
 export function Analytics() {
-  const { applications } = useAppContext()
+  const [metrics, setMetrics] = useState<any>(null)
+  const [funnel, setFunnel] = useState<any>(null)
+  const [trends, setTrends] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    loadAnalytics()
+  }, [])
+
+  const loadAnalytics = async () => {
+    try {
+      setLoading(true)
+      const [metricsData, funnelData, trendsData] = await Promise.all([
+        analyticsApi.getMetrics('all'),
+        analyticsApi.getFunnel(),
+        analyticsApi.getTrends(56)
+      ])
+      setMetrics(metricsData)
+      setFunnel(funnelData)
+      setTrends(trendsData)
+    } catch (error) {
+      console.error('Failed to load analytics:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const sourceData = useMemo(() => {
-    const sources: Record<string, number> = {}
-    applications.forEach((app) => {
-      sources[app.source] = (sources[app.source] || 0) + 1
-    })
-    return Object.entries(sources).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value)
-  }, [applications])
+    if (!metrics) return []
+    return Object.entries(metrics.applications_by_status || {}).map(([name, value]) => ({ name, value }))
+  }, [metrics])
 
-  const funnelData = useMemo(() => {
-    const total = applications.length
-    const screening = applications.filter(a => a.currentStageIndex > 0 || a.status === 'screening' || a.status === 'interview' || a.status === 'offer').length
-    const interview = applications.filter(a => a.status === 'interview' || a.status === 'offer' || a.currentStageIndex > 1).length
-    const offer = applications.filter(a => a.status === 'offer').length
+  const funnelDataChart = useMemo(() => {
+    if (!funnel) return []
     return [
-      { name: 'Applied', value: total, fill: '#3b82f6' },
-      { name: 'Screening', value: screening, fill: '#8b5cf6' },
-      { name: 'Interview', value: interview, fill: '#ec4899' },
-      { name: 'Offer', value: offer, fill: '#10b981' },
+      { name: 'Applied', value: funnel.total_applications || 0, fill: '#3b82f6' },
+      { name: 'Screening', value: funnel.screening || 0, fill: '#8b5cf6' },
+      { name: 'Interview', value: funnel.interview || 0, fill: '#ec4899' },
+      { name: 'Offer', value: funnel.offer || 0, fill: '#10b981' },
     ]
-  }, [applications])
+  }, [funnel])
 
   const timelineData = useMemo(() => {
-    const weeks: Record<string, number> = {}
-    applications.forEach((app) => {
-      const date = new Date(app.appliedDate)
-      const weekStart = new Date(date)
-      weekStart.setDate(date.getDate() - date.getDay())
-      const weekKey = weekStart.toISOString().split('T')[0]
-      weeks[weekKey] = (weeks[weekKey] || 0) + 1
-    })
+    if (!trends?.daily_trend) return []
     let cumulative = 0
-    return Object.entries(weeks).sort(([a], [b]) => a.localeCompare(b)).map(([date, count]) => {
-      cumulative += count
+    return trends.daily_trend.map((item: any) => {
+      cumulative += item.count
       return {
-        date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        new: count,
+        date: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        new: item.count,
         total: cumulative,
       }
     })
-  }, [applications])
+  }, [trends])
 
   const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#64748b']
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-slate-500">Loading analytics...</p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -56,39 +76,89 @@ export function Analytics() {
         <p className="mt-1 text-slate-600 dark:text-slate-400">Deep dive into your job search metrics</p>
       </div>
 
+      {/* Key Metrics */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {metrics && Object.entries({
+          'Total Applications': metrics.total_applications,
+          'Active': metrics.active_applications,
+          'Response Rate': `${metrics.response_rate}%`,
+          'Offers': metrics.offers_received,
+        }).map(([label, value], i) => (
+          <motion.div
+            key={label}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.1 }}
+            className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800"
+          >
+            <p className="text-sm text-slate-500 dark:text-slate-400">{label}</p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{value}</p>
+          </motion.div>
+        ))}
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6"
+        >
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-6">Conversion Funnel</h2>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={funnelData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+            <BarChart data={funnelDataChart} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#334155" opacity={0.2} />
               <XAxis type="number" stroke="#94a3b8" />
               <YAxis dataKey="name" type="category" stroke="#94a3b8" width={80} />
-              <Tooltip cursor={{ fill: 'rgba(148, 163, 184, 0.1)' }} contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', border: 'none', borderRadius: '8px', color: 'white' }} />
+              <Tooltip
+                cursor={{ fill: 'rgba(148, 163, 184, 0.1)' }}
+                contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', border: 'none', borderRadius: '8px', color: 'white' }}
+              />
               <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                {funnelData.map((_entry, index) => (
-                  <Cell key={`cell-${index}`} fill={funnelData[index].fill} />
+                {funnelDataChart.map((_entry, index) => (
+                  <Cell key={`cell-${index}`} fill={funnelDataChart[index].fill} />
                 ))}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-6">Applications by Source</h2>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6"
+        >
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-6">Applications by Status</h2>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
-              <Pie data={sourceData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+              <Pie
+                data={sourceData}
+                cx="50%"
+                cy="50%"
+                innerRadius={60}
+                outerRadius={100}
+                paddingAngle={2}
+                dataKey="value"
+                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                labelLine={false}
+              >
                 {sourceData.map((_entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', border: 'none', borderRadius: '8px', color: 'white' }} />
+              <Tooltip
+                contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', border: 'none', borderRadius: '8px', color: 'white' }}
+              />
             </PieChart>
           </ResponsiveContainer>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 lg:col-span-2">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 lg:col-span-2"
+        >
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-6">Application Volume Over Time</h2>
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={timelineData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
@@ -101,13 +171,54 @@ export function Analytics() {
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.2} />
               <XAxis dataKey="date" stroke="#94a3b8" />
               <YAxis stroke="#94a3b8" />
-              <Tooltip contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', border: 'none', borderRadius: '8px', color: 'white' }} />
-              <Area type="monotone" dataKey="total" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorTotal)" name="Total Applications" />
-              <Area type="monotone" dataKey="new" stroke="#ec4899" strokeWidth={2} fillOpacity={0} name="New Applications" />
+              <Tooltip
+                contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', border: 'none', borderRadius: '8px', color: 'white' }}
+              />
+              <Area
+                type="monotone"
+                dataKey="total"
+                stroke="#6366f1"
+                strokeWidth={3}
+                fillOpacity={1}
+                fill="url(#colorTotal)"
+                name="Total Applications"
+              />
+              <Area
+                type="monotone"
+                dataKey="new"
+                stroke="#ec4899"
+                strokeWidth={2}
+                fillOpacity={0}
+                name="New Applications"
+              />
             </AreaChart>
           </ResponsiveContainer>
         </motion.div>
       </div>
+
+      {/* Conversion Rates */}
+      {funnel?.conversion_rates && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6"
+        >
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Conversion Rates</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {Object.entries(funnel.conversion_rates).map(([key, value]) => (
+              <div key={key} className="text-center p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                <p className="text-sm text-slate-500 dark:text-slate-400 capitalize">
+                  {key.replace('_', ' ')}
+                </p>
+                <p className="text-2xl font-bold text-primary-600 dark:text-primary-400 mt-1">
+                  {String(value)}%
+                </p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
     </div>
   )
 }

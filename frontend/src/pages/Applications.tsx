@@ -2,9 +2,8 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, Trash2, Edit2 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { StatusBadge } from '../components/ui/StatusBadge'
 import { useAppContext } from '../context/AppContext'
-import type { ApplicationStatus, ApplicationSource, Application } from '../types'
+import type { ApplicationSource, Application } from '../types'
 
 interface ApplicationsProps {
   onEdit: (app: Application) => void
@@ -12,9 +11,8 @@ interface ApplicationsProps {
 }
 
 export function Applications({ onEdit, onSelect }: ApplicationsProps) {
-  const { applications, deleteApplication } = useAppContext()
+  const { applications, applicationsLoading, deleteApplication } = useAppContext()
   const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState<ApplicationStatus | 'all'>('all')
   const [sourceFilter, setSourceFilter] = useState<ApplicationSource | 'all'>('all')
 
   const filteredApplications = useMemo(() => {
@@ -22,18 +20,25 @@ export function Applications({ onEdit, onSelect }: ApplicationsProps) {
       const matchesSearch =
         app.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
         app.role.toLowerCase().includes(searchQuery.toLowerCase())
-      const matchesStatus = statusFilter === 'all' || app.status === statusFilter
       const matchesSource = sourceFilter === 'all' || app.source === sourceFilter
-      return matchesSearch && matchesStatus && matchesSource
+      return matchesSearch && matchesSource
     })
-  }, [applications, searchQuery, statusFilter, sourceFilter])
+  }, [applications, searchQuery, sourceFilter])
 
-  const handleDelete = (e: React.MouseEvent, id: string) => {
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.preventDefault()
     e.stopPropagation()
     if (window.confirm('Are you sure you want to delete this application?')) {
-      deleteApplication(id)
+      await deleteApplication(id)
     }
+  }
+
+  if (applicationsLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-slate-500">Loading applications...</p>
+      </div>
+    )
   }
 
   return (
@@ -66,23 +71,6 @@ export function Applications({ onEdit, onSelect }: ApplicationsProps) {
                 className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
-          </div>
-
-          <div className="w-full lg:w-48">
-            <select
-              value={statusFilter}
-              onChange={(e) =>
-                setStatusFilter(e.target.value as ApplicationStatus | 'all')
-              }
-              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-            >
-              <option value="all">All Statuses</option>
-              <option value="applied">Applied</option>
-              <option value="screening">Screening</option>
-              <option value="interview">Interview</option>
-              <option value="offer">Offer</option>
-              <option value="rejected">Rejected</option>
-            </select>
           </div>
 
           <div className="w-full lg:w-48">
@@ -124,7 +112,7 @@ export function Applications({ onEdit, onSelect }: ApplicationsProps) {
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Role</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Applied Date</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Source</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Stage</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Last Updated</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Actions</th>
               </tr>
@@ -161,10 +149,12 @@ export function Applications({ onEdit, onSelect }: ApplicationsProps) {
                     <span className="text-sm text-slate-600 dark:text-slate-400">{app.source}</span>
                   </td>
                   <td className="px-6 py-4">
-                    <StatusBadge status={app.status} />
+                    <span className="inline-flex px-2 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-xs font-medium">
+                      {app.customStages?.[app.currentStageIndex || 0] || 'Applied'}
+                    </span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-sm text-slate-600 dark:text-slate-400">{new Date(app.lastUpdated).toLocaleDateString()}</span>
+                    <span className="text-sm text-slate-600 dark:text-slate-400">{app.lastUpdated ? new Date(app.lastUpdated).toLocaleDateString() : 'N/A'}</span>
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">

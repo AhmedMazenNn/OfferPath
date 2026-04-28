@@ -22,13 +22,12 @@ export function NewApplicationModal({
     jobUrl: '',
     appliedDate: new Date().toISOString().split('T')[0],
     source: 'LinkedIn Easy Apply' as ApplicationSource,
-    resumeVersion: '',
     notes: '',
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    addApplication({
+    await addApplication({
       company: formData.company,
       role: formData.role,
       jobUrl: formData.jobUrl,
@@ -37,7 +36,6 @@ export function NewApplicationModal({
       status: 'applied',
       currentStageIndex: 0,
       customStages: DEFAULT_STAGES,
-      resumeVersion: formData.resumeVersion,
       notes: formData.notes,
     })
     setFormData({
@@ -46,7 +44,6 @@ export function NewApplicationModal({
       jobUrl: '',
       appliedDate: new Date().toISOString().split('T')[0],
       source: 'LinkedIn Easy Apply',
-      resumeVersion: '',
       notes: '',
     })
     onClose()
@@ -170,20 +167,6 @@ export function NewApplicationModal({
                       <option value="Other">Other</option>
                     </select>
                   </div>
-                </div>
-
-                {/* Resume Version */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Resume Version
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.resumeVersion}
-                    onChange={(e) => handleChange('resumeVersion', e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="e.g., Frontend_2026_v2"
-                  />
                 </div>
 
                 {/* Notes */}

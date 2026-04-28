@@ -12,6 +12,9 @@ import { Interviews } from './pages/Interviews'
 import { Analytics } from './pages/Analytics'
 import { OfferComparison } from './pages/OfferComparison'
 import { Login } from './pages/Login'
+import { Signup } from './pages/Signup'
+import { Settings } from './pages/Settings'
+import { AdminPanel } from './pages/AdminPanel'
 import type { Application } from './types'
 
 const queryClient = new QueryClient({
@@ -32,18 +35,29 @@ function AppContent() {
   const handleEdit = (app: Application) => setEditingApp(app)
   const closeEditModal = () => setEditingApp(null)
 
-  if (!isAuthenticated) return <Login />
+  if (!isAuthenticated) {
+    return (
+      <Layout isAuthenticated={false} onQuickLog={() => {}}>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </Layout>
+    )
+  }
 
   return (
-    <Layout onQuickLog={handleQuickLog}>
+    <Layout onQuickLog={handleQuickLog} isAuthenticated={true}>
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/applications" element={<Applications onEdit={handleEdit} onSelect={() => {}} />} />
         <Route path="/applications/:id" element={<ApplicationDetail onEdit={handleEdit} />} />
         <Route path="/interviews" element={<Interviews />} />
         <Route path="/offers" element={<OfferComparison />} />
-        <Route path="/documents" element={<div className="p-6"><h1 className="text-2xl font-bold">Documents</h1><p className="text-slate-600 mt-2">Coming soon...</p></div>} />
         <Route path="/analytics" element={<Analytics />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/admin" element={<AdminPanel />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <NewApplicationModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />

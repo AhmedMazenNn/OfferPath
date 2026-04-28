@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Briefcase,
@@ -20,96 +20,84 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import { StatsCard } from '../components/ui/StatsCard'
-import { StatusBadge } from '../components/ui/StatusBadge'
 import { useAppContext } from '../context/AppContext'
-import type { Application, ApplicationStatus } from '../types'
+import type { Application } from '../types'
+import { analyticsApi, interviewsApi } from '../services/api'
+
 export function Dashboard() {
-  const { applications } = useAppContext()
-  const stats = useMemo(() => {
-    const total = applications.length
-    const active = applications.filter(
-      (app) => app.status !== 'rejected' && app.status !== 'offer',
-    ).length
-    const responses = applications.filter(
-      (app) => app.status !== 'applied',
-    ).length
-    const responseRate = total > 0 ? Math.round((responses / total) * 100) : 0
-    const today = new Date()
-    const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
-    const upcomingInterviews = applications.filter((app) => {
-      if (!app.interviewDate) return false
-      const interviewDate = new Date(app.interviewDate)
-      return interviewDate >= today && interviewDate <= weekFromNow
-    }).length
-    return {
-      total,
-      active,
-      responseRate,
-      upcomingInterviews,
+  const { applications, applicationsLoading } = useAppContext()
+  const [stats, setStats] = useState<any>(null)
+  const [upcomingInterviews, setUpcomingInterviews] = useState<any[]>([])
+  const [trends, setTrends] = useState<any>(null)
+
+  useEffect(() => {
+    loadAnalytics()
+    loadUpcomingInterviews()
+  }, [])
+
+  const loadAnalytics = async () => {
+    try {
+      const [metrics, funnel, trendsData] = await Promise.all([
+        analyticsApi.getMetrics(),
+        analyticsApi.getFunnel(),
+        analyticsApi.getTrends(56)
+      ])
+      setStats({ ...metrics, funnel })
+      setTrends(trendsData)
+    } catch (error) {
+      console.error('Failed to load analytics:', error)
     }
-  }, [applications])
+  }
+
+  const loadUpcomingInterviews = async () => {
+    try {
+      const data = await interviewsApi.getUpcoming(30)
+      setUpcomingInterviews(data)
+    } catch (error) {
+      console.error('Failed to load interviews:', error)
+    }
+  }
+
   const statusGroups = useMemo(() => {
-    const groups: Record<ApplicationStatus, Application[]> = {
-      applied: [],
-      screening: [],
-      interview: [],
-      offer: [],
-      rejected: [],
-    }
+    const groups: Record<string, Application[]> = {}
     applications.forEach((app) => {
-      groups[app.status].push(app)
+      const stage = app.customStages?.[app.currentStageIndex || 0] || 'Applied'
+      if (!groups[stage]) groups[stage] = []
+      groups[stage].push(app)
     })
     return groups
   }, [applications])
+
+  const stageColors: Record<string, string> = {
+    'Applied': '#3b82f6',
+    'Screening': '#eab308',
+    'Phone Screen': '#f59e0b',
+    'Technical': '#a855f7',
+    'Onsite': '#8b5cf6',
+    'Offer': '#22c55e',
+  }
+
   const pieData = useMemo(() => {
-    return [
-      {
-        name: 'Applied',
-        value: statusGroups.applied.length,
-        color: '#3b82f6',
-      },
-      {
-        name: 'Screening',
-        value: statusGroups.screening.length,
-        color: '#eab308',
-      },
-      {
-        name: 'Interview',
-        value: statusGroups.interview.length,
-        color: '#a855f7',
-      },
-      {
-        name: 'Offer',
-        value: statusGroups.offer.length,
-        color: '#22c55e',
-      },
-      {
-        name: 'Rejected',
-        value: statusGroups.rejected.length,
-        color: '#ef4444',
-      },
-    ].filter((item) => item.value > 0)
-  }, [statusGroups])
-  const timelineData = useMemo(() => {
-    const weeks: Record<string, number> = {}
+    const stageCounts: Record<string, number> = {}
     applications.forEach((app) => {
-      const date = new Date(app.appliedDate)
-      const weekStart = new Date(date)
-      weekStart.setDate(date.getDate() - date.getDay())
-      const weekKey = weekStart.toISOString().split('T')[0]
-      weeks[weekKey] = (weeks[weekKey] || 0) + 1
+      const stage = app.customStages?.[app.currentStageIndex || 0] || 'Applied'
+      stageCounts[stage] = (stageCounts[stage] || 0) + 1
     })
-    return Object.entries(weeks)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .slice(-8)
-      .map(([date, count]) => ({
-        date: new Date(date).toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-        }),
-        applications: count,
-      }))
+    return Object.entries(stageCounts).map(([name, value]) => ({
+      name,
+      value,
+      color: stageColors[name] || '#64748b'
+    }))
   }, [applications])
+
+  const timelineData = useMemo(() => {
+    if (!trends) return []
+    return trends.daily_trend?.map((item: any) => ({
+      date: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      applications: item.count,
+    })) || []
+  }, [trends])
+
   const recentApplications = useMemo(() => {
     return [...applications]
       .sort(
@@ -118,7 +106,26 @@ export function Dashboard() {
       )
       .slice(0, 6)
   }, [applications])
-  const [activeTab, setActiveTab] = useState<ApplicationStatus>('applied')
+
+  const uniqueStages = useMemo(() => {
+    const stages = new Set<string>()
+    applications.forEach((app) => {
+      const stage = app.customStages?.[app.currentStageIndex || 0] || 'Applied'
+      stages.add(stage)
+    })
+    return Array.from(stages)
+  }, [applications])
+
+  const [activeTab, setActiveTab] = useState<string>(uniqueStages[0] || 'Applied')
+
+  if (applicationsLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-slate-500">Loading...</p>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -136,64 +143,50 @@ export function Dashboard() {
         <StatsCard
           icon={Briefcase}
           label="Total Applications"
-          value={stats.total}
+          value={stats?.total_applications || applications.length}
           delay={0}
         />
         <StatsCard
           icon={TrendingUp}
-          label="Active"
-          value={stats.active}
+          label="Total Applications"
+          value={applications.length}
           delay={0.1}
         />
         <StatsCard
           icon={Percent}
           label="Response Rate"
-          value={`${stats.responseRate}%`}
+          value={`${stats?.response_rate || 0}%`}
           delay={0.2}
         />
         <StatsCard
           icon={Calendar}
           label="Upcoming Interviews"
-          value={stats.upcomingInterviews}
+          value={upcomingInterviews.length}
           delay={0.3}
         />
       </div>
 
       {/* Status Tabs */}
       <motion.div
-        initial={{
-          opacity: 0,
-          y: 20,
-        }}
-        animate={{
-          opacity: 1,
-          y: 0,
-        }}
-        transition={{
-          delay: 0.4,
-        }}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
         className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700"
       >
         <div className="border-b border-slate-200 dark:border-slate-700">
           <div className="flex overflow-x-auto">
-            {(
-              [
-                'applied',
-                'screening',
-                'interview',
-                'offer',
-                'rejected',
-              ] as ApplicationStatus[]
-            ).map((status) => (
+            {uniqueStages.map((stage) => (
               <button
-                key={status}
-                onClick={() => setActiveTab(status)}
-                className={`flex-1 min-w-[120px] px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === status ? 'border-primary-600 text-primary-600 dark:text-primary-400' : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}
+                key={stage}
+                onClick={() => setActiveTab(stage)}
+                className={`flex-1 min-w-[120px] px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === stage
+                    ? 'border-primary-600 text-primary-600 dark:text-primary-400'
+                    : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
               >
-                <span className="capitalize">{status}</span>
-                <span className="ml-2 text-xs">
-                  ({statusGroups[status].length})
-                </span>
+                <span className="capitalize">{stage}</span>
+                <span className="ml-2 text-xs">({(statusGroups[stage] || []).length})</span>
               </button>
             ))}
           </div>
@@ -238,17 +231,9 @@ export function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Status Distribution */}
         <motion.div
-          initial={{
-            opacity: 0,
-            y: 20,
-          }}
-          animate={{
-            opacity: 1,
-            y: 0,
-          }}
-          transition={{
-            delay: 0.5,
-          }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
           className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6"
         >
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
@@ -282,12 +267,7 @@ export function Dashboard() {
           <div className="mt-4 flex flex-wrap gap-3 justify-center">
             {pieData.map((item) => (
               <div key={item.name} className="flex items-center gap-2">
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{
-                    backgroundColor: item.color,
-                  }}
-                />
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
                 <span className="text-sm text-slate-600 dark:text-slate-400">
                   {item.name} ({item.value})
                 </span>
@@ -298,17 +278,9 @@ export function Dashboard() {
 
         {/* Timeline */}
         <motion.div
-          initial={{
-            opacity: 0,
-            y: 20,
-          }}
-          animate={{
-            opacity: 1,
-            y: 0,
-          }}
-          transition={{
-            delay: 0.6,
-          }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
           className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6"
         >
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
@@ -316,19 +288,8 @@ export function Dashboard() {
           </h2>
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={timelineData}>
-              <XAxis
-                dataKey="date"
-                stroke="#94a3b8"
-                style={{
-                  fontSize: '12px',
-                }}
-              />
-              <YAxis
-                stroke="#94a3b8"
-                style={{
-                  fontSize: '12px',
-                }}
-              />
+              <XAxis dataKey="date" stroke="#94a3b8" style={{ fontSize: '12px' }} />
+              <YAxis stroke="#94a3b8" style={{ fontSize: '12px' }} />
               <Tooltip
                 contentStyle={{
                   backgroundColor: 'rgba(15, 23, 42, 0.9)',
@@ -342,10 +303,7 @@ export function Dashboard() {
                 dataKey="applications"
                 stroke="#6366f1"
                 strokeWidth={2}
-                dot={{
-                  fill: '#6366f1',
-                  r: 4,
-                }}
+                dot={{ fill: '#6366f1', r: 4 }}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -354,17 +312,9 @@ export function Dashboard() {
 
       {/* Recent Applications */}
       <motion.div
-        initial={{
-          opacity: 0,
-          y: 20,
-        }}
-        animate={{
-          opacity: 1,
-          y: 0,
-        }}
-        transition={{
-          delay: 0.7,
-        }}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.7 }}
         className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700"
       >
         <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
@@ -405,7 +355,9 @@ export function Dashboard() {
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
-                  <StatusBadge status={app.status} />
+                  <span className="inline-flex px-2 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-xs font-medium">
+                    {app.customStages?.[app.currentStageIndex || 0] || 'Applied'}
+                  </span>
                   <span className="text-sm text-slate-500 dark:text-slate-400">
                     {new Date(app.appliedDate).toLocaleDateString()}
                   </span>

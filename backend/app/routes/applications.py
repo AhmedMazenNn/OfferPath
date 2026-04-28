@@ -22,7 +22,8 @@ import json
 from datetime import datetime
 
 from app.database import get_db, init_db
-from app.models import Application, ApplicationCreate, ApplicationUpdate, ApplicationResponse
+from app.models import Application, ApplicationCreate, ApplicationUpdate, ApplicationResponse, User
+from app.routes.auth import get_current_user
 
 # Create a router
 # This is like a mini FastAPI app for these routes
@@ -40,17 +41,17 @@ init_db()
 # ============================================
 @router.get("", response_model=List[ApplicationResponse])
 def get_applications(
-    skip: int = 0,  # How many to skip (for pagination)
-    limit: int = 100,  # Maximum to return
-    db: Session = Depends(get_db)
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
-    Get all job applications.
-    
-    Returns a list of all applications in the database.
-    Can add pagination with skip and limit parameters.
+    Get all job applications for the current user.
     """
-    applications = db.query(Application).offset(skip).limit(limit).all()
+    applications = db.query(Application).filter(
+        Application.user_id == current_user.id
+    ).offset(skip).limit(limit).all()
     return applications
 
 
@@ -61,14 +62,18 @@ def get_applications(
 @router.get("/{application_id}", response_model=ApplicationResponse)
 def get_application(
     application_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Get a single application by its ID.
     
     Returns 404 if not found.
     """
-    application = db.query(Application).filter(Application.id == application_id).first()
+    application = db.query(Application).filter(
+        Application.id == application_id,
+        Application.user_id == current_user.id
+    ).first()
     if not application:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -84,7 +89,8 @@ def get_application(
 @router.post("", response_model=ApplicationResponse, status_code=status.HTTP_201_CREATED)
 def create_application(
     application: ApplicationCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Create a new job application.
@@ -99,8 +105,10 @@ def create_application(
     
     Returns the created application with its new ID.
     """
-    # Convert to database model
+    custom_stages_str = ','.join(application.custom_stages) if application.custom_stages else "Applied,Screening,Phone Screen,Technical,Onsite,Offer"
+    
     db_application = Application(
+        user_id=current_user.id,
         company=application.company,
         role=application.role,
         job_url=application.job_url,
@@ -108,22 +116,20 @@ def create_application(
         applied_date=datetime.strptime(application.applied_date, "%Y-%m-%d").date(),
         status=application.status,
         notes=application.notes,
-        resume_version=application.resume_version,
         salary=application.salary,
         location=application.location,
         current_stage_index=application.current_stage_index,
-        custom_stages=",".join(application.custom_stages),
+        custom_stages=custom_stages_str,
         timeline=json.dumps([{
-            "stage": application.custom_stages[0],
+            "stage": application.custom_stages[0] if application.custom_stages else "Applied",
             "date": datetime.now().isoformat(),
             "notes": "Application created"
         }])
     )
     
-    # Save to database
     db.add(db_application)
-    db.commit()  # Commit the changes
-    db.refresh(db_application)  # Get the new ID
+    db.commit()
+    db.refresh(db_application)
     
     return db_application
 
@@ -136,29 +142,36 @@ def create_application(
 def update_application(
     application_id: int,
     updates: ApplicationUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Update an existing application.
     
-    Only include fields you want to change in the JSON.
+    Only include fields that were provided.
     Returns 404 if not found.
     """
-    application = db.query(Application).filter(Application.id == application_id).first()
+    application = db.query(Application).filter(
+        Application.id == application_id,
+        Application.user_id == current_user.id
+    ).first()
     if not application:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Application with id {application_id} not found"
         )
     
-    # Update only the fields that were provided
     update_data = updates.model_dump(exclude_unset=True)
     
     for field, value in update_data.items():
         if value is not None:
-            setattr(application, field, value)
+            if field == 'custom_stages' and isinstance(value, list):
+                setattr(application, field, ','.join(value))
+            elif field == 'timeline' and isinstance(value, list):
+                setattr(application, field, json.dumps(value))
+            else:
+                setattr(application, field, value)
     
-    # Always update the last_updated timestamp
     application.last_updated = datetime.now()
     
     db.commit()
@@ -174,7 +187,8 @@ def update_application(
 @router.delete("/{application_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_application(
     application_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Delete an application.
@@ -182,7 +196,10 @@ def delete_application(
     Returns 404 if not found.
     Returns 204 (No Content) on success.
     """
-    application = db.query(Application).filter(Application.id == application_id).first()
+    application = db.query(Application).filter(
+        Application.id == application_id,
+        Application.user_id == current_user.id
+    ).first()
     if not application:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -200,18 +217,22 @@ def delete_application(
 # ============================================
 
 @router.get("/stats/summary")
-def get_stats(db: Session = Depends(get_db)):
+def get_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """
-    Get summary statistics.
+    Get summary statistics for current user.
     
     Returns counts by status - useful for dashboard!
     """
-    total = db.query(Application).count()
-    applied = db.query(Application).filter(Application.status == "applied").count()
-    screening = db.query(Application).filter(Application.status == "screening").count()
-    interview = db.query(Application).filter(Application.status == "interview").count()
-    offer = db.query(Application).filter(Application.status == "offer").count()
-    rejected = db.query(Application).filter(Application.status == "rejected").count()
+    query = db.query(Application).filter(Application.user_id == current_user.id)
+    total = query.count()
+    applied = query.filter(Application.status == "applied").count()
+    screening = query.filter(Application.status == "screening").count()
+    interview = query.filter(Application.status == "interview").count()
+    offer = query.filter(Application.status == "offer").count()
+    rejected = query.filter(Application.status == "rejected").count()
     
     return {
         "total": total,
