@@ -20,7 +20,13 @@ from app.database import get_db
 from app.models import Application, Interview, Offer, User
 from app.routes.auth import get_current_user
 
-router = APIRouter(prefix="/api/analytics", tags=["analytics"])
+router = APIRouter(tags=["analytics"])
+
+
+@router.get("/check")
+def analytics_health_check():
+    """Verify analytics routes are active."""
+    return {"status": "ok", "message": "Analytics router is active"}
 
 
 @router.get("/funnel")
