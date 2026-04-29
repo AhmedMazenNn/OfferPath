@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "OfferPath - Job Tracker",
   "version": "1.0.0",
-  "description": "Streamline your job search. Automatically detect and log job applications from LinkedIn and company career sites to your OfferPath dashboard.",
+  "description": "Streamline your job search. Automatically detect and log job applications from LinkedIn and company sites to your dashboard.",
   "permissions": [
     "storage",
     "activeTab",
