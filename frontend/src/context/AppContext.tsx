@@ -22,15 +22,16 @@ const AppContext = createContext<AppContextType | undefined>(undefined)
 // Helper to sync auth state with Chrome extension
 const syncWithExtension = (token: string | null, user: User | null) => {
   // Check if we're in a Chrome extension context
-  if (typeof window !== 'undefined' && (window as unknown as { chrome?: { storage?: { local?: { set: (items: Record<string, unknown>) => void; remove: (keys: string[]) => void } } } }).chrome?.storage) {
-    const chrome = window as unknown as { chrome?: { storage?: { local?: { set: (items: Record<string, unknown>) => void; remove: (keys: string[]) => void } } } }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const win = window as any
+  if (win?.chrome?.storage) {
     if (token && user) {
-      chrome.storage.local.set({
+      win.chrome.storage.local.set({
         authToken: token,
         user: user
       })
     } else {
-      chrome.storage.local.remove(['authToken', 'user'])
+      win.chrome.storage.local.remove(['authToken', 'user'])
     }
   }
 }

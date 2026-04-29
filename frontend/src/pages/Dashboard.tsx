@@ -23,14 +23,16 @@ import {
 import { StatsCard } from '../components/ui/StatsCard'
 import { StatusBadge } from '../components/ui/StatusBadge'
 import { useAppContext } from '../context/AppContext'
-import type { Application } from '../types'
+import type { Application, Interview } from '../types'
 import { analyticsApi, interviewsApi } from '../services/api'
 
 export function Dashboard({ onQuickLog }: { onQuickLog?: () => void }) {
   const { applications, applicationsLoading, user } = useAppContext()
-  const [stats, setStats] = useState<Record<string, unknown> | null>(null)
-  const [upcomingInterviews, setUpcomingInterviews] = useState<Record<string, unknown>[]>([])
-  const [trends, setTrends] = useState<Record<string, unknown> | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [stats, setStats] = useState<any>(null)
+  const [upcomingInterviews, setUpcomingInterviews] = useState<Interview[]>([])
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [trends, setTrends] = useState<any>(null)
 
   const loadAnalytics = async () => {
     try {
@@ -94,7 +96,8 @@ export function Dashboard({ onQuickLog }: { onQuickLog?: () => void }) {
 
   const timelineData = useMemo(() => {
     if (!trends) return []
-    return trends.daily_trend?.map((item: { date: string; count: number }) => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (trends.daily_trend as any[])?.map((item: { date: string; count: number }) => ({
       date: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       applications: item.count,
     })) || []

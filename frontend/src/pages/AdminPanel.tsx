@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Users, Trash2, Shield, UserPlus, AlertTriangle, Briefcase } from 'lucide-react'
 import { useAppContext } from '../context/AppContext'
 import api from '../services/api'
