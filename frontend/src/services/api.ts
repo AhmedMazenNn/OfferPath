@@ -9,7 +9,7 @@
 import type { Application, ApplicationStatus, Interview, Offer, TimelineEvent } from '../types'
 import { DEFAULT_STAGES } from '../types'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_URL = import.meta.env.VITE_API_URL || 'https://ahmedmazen-offerpath.hf.space'
 
 // ============================================
 // Helper Functions
