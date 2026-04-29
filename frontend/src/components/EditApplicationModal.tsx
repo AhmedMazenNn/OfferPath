@@ -43,21 +43,6 @@ export function EditApplicationModal({
   const [isDeleting, setIsDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<{ type: 'interview' | 'offer'; id: string; label: string } | null>(null)
 
-  const loadRelated = async (appId: string) => {
-    try {
-      const ivs = await interviewsApi.list({ application_id: appId })
-      setInterviews(ivs)
-    } catch (err) {
-      console.error('Failed to load interviews', err)
-    }
-    try {
-      const ofs = await offersApi.listByApplication(appId)
-      setOffers(ofs)
-    } catch (err) {
-      console.error('Failed to load offers', err)
-    }
-  }
-
   useEffect(() => {
     if (isOpen && application) {
       setFormData({
@@ -69,9 +54,25 @@ export function EditApplicationModal({
         currentStageIndex: application.currentStageIndex || 0,
       })
       setCustomStages(application.customStages || [])
-      loadRelated(application.id)
+      
+      // Load related data
+      const loadRelated = async () => {
+        try {
+          const ivs = await interviewsApi.list({ application_id: application.id })
+          setInterviews(ivs)
+        } catch (err) {
+          console.error('Failed to load interviews', err)
+        }
+        try {
+          const ofs = await offersApi.listByApplication(application.id)
+          setOffers(ofs)
+        } catch (err) {
+          console.error('Failed to load offers', err)
+        }
+      }
+      loadRelated()
     }
-  }, [isOpen, application, loadRelated])
+  }, [isOpen, application])
 
   const handleDeleteInterview = async (id: string) => {
     setIsDeleting(true)
