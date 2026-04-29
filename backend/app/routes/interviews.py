@@ -26,7 +26,7 @@ from app.models import Interview, InterviewCreate, InterviewUpdate, InterviewRes
 router = APIRouter(prefix="/api/interviews", tags=["interviews"])
 
 
-@router.get("/", response_model=list[InterviewResponse])
+@router.get("", response_model=list[InterviewResponse])
 def list_interviews(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, le=500),
@@ -151,7 +151,7 @@ def get_interview(interview_id: int, db: Session = Depends(get_db)):
     return result
 
 
-@router.post("/", response_model=InterviewResponse, status_code=201)
+@router.post("", response_model=InterviewResponse, status_code=201)
 def create_interview(interview: InterviewCreate, db: Session = Depends(get_db)):
     """Schedule a new interview."""
     application = db.query(Application).filter(Application.id == interview.application_id).first()

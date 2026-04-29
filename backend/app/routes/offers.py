@@ -26,7 +26,7 @@ from app.routes.auth import get_current_user
 router = APIRouter(prefix="/api/offers", tags=["offers"])
 
 
-@router.get("/", response_model=list[OfferResponse])
+@router.get("", response_model=list[OfferResponse])
 def list_offers(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, le=500),
@@ -221,7 +221,7 @@ def get_offer(offer_id: int, db: Session = Depends(get_db)):
     return result
 
 
-@router.post("/", response_model=OfferResponse, status_code=201)
+@router.post("", response_model=OfferResponse, status_code=201)
 def create_offer(offer: OfferCreate, db: Session = Depends(get_db)):
     """Create a new job offer."""
     application = db.query(Application).filter(Application.id == offer.application_id).first()
