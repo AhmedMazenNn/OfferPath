@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Users, Trash2, Shield, UserPlus, AlertTriangle, Briefcase } from 'lucide-react'
 import { useAppContext } from '../context/AppContext'
 import api from '../services/api'
@@ -28,7 +28,13 @@ export function AdminPanel() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newUser, setNewUser] = useState({ name: '', email: '', password: '', isAdmin: false })
 
+  const hasAuthToken = () => !!localStorage.getItem('offerpath_token')
+
   const loadData = async () => {
+    if (!hasAuthToken()) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     setError(null)
     try {
@@ -38,12 +44,17 @@ export function AdminPanel() {
       ])
       setUsers(usersData)
       setStats(statsData)
-} catch (err: unknown) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load admin data')
     } finally {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    if (!hasAuthToken()) return
+    loadData()
+  }, [])
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault()
