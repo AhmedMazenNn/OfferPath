@@ -49,6 +49,8 @@ export interface Interview {
   interviewerName?: string
   interviewerEmail?: string
   location?: string
+  isRemote?: boolean
+  meetingLink?: string
   notes?: string
   status: 'scheduled' | 'completed' | 'cancelled'
   createdAt: string
@@ -64,6 +66,8 @@ export interface Offer {
   bonus?: number
   equity?: string
   benefits: string[]
+  pros: string[]
+  cons: string[]
   startDate?: string
   deadline?: string
   status: 'pending' | 'accepted' | 'declined' | 'negotiating'
@@ -76,9 +80,7 @@ export interface Offer {
 export const DEFAULT_STAGES = [
   'Applied',
   'Screening',
-  'Phone Screen',
-  'Technical',
-  'Onsite',
+  'Interview',
   'Offer'
 ]
 

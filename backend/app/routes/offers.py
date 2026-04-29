@@ -14,12 +14,14 @@ Endpoints:
 """
 
 from typing import Optional, List
+from datetime import datetime
 from fastapi import APIRouter, HTTPException, Query, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
 from app.database import get_db
-from app.models import Offer, OfferCreate, OfferUpdate, OfferResponse, Application
+from app.models import Offer, OfferCreate, OfferUpdate, OfferResponse, Application, User
+from app.routes.auth import get_current_user
 
 router = APIRouter(prefix="/api/offers", tags=["offers"])
 
@@ -30,13 +32,16 @@ def list_offers(
     limit: int = Query(default=100, le=500),
     status: Optional[str] = Query(None, description="Filter by status"),
     application_id: Optional[int] = Query(None, description="Filter by application ID"),
+    status_filter: Optional[str] = Query(None, description="Alternative filter by status"),
     db: Session = Depends(get_db)
 ):
-    """List all offers with optional filters."""
+    """List all offers with optional filters. Also includes applications with 'offer' status."""
     query = db.query(Offer)
     
-    if status:
-        query = query.filter(Offer.status == status)
+    filter_status = status or status_filter
+    
+    if filter_status:
+        query = query.filter(Offer.status == filter_status)
     if application_id:
         query = query.filter(Offer.application_id == application_id)
     
@@ -52,6 +57,8 @@ def list_offers(
             "bonus": offer.bonus,
             "equity": offer.equity,
             "benefits": offer.benefits.split(",") if offer.benefits and offer.benefits != "[]" else [],
+            "pros": offer.pros.split(",") if offer.pros and offer.pros != "[]" else [],
+            "cons": offer.cons.split(",") if offer.cons and offer.cons != "[]" else [],
             "start_date": offer.start_date.isoformat() if offer.start_date else None,
             "deadline": offer.deadline.isoformat() if offer.deadline else None,
             "status": offer.status,
@@ -67,6 +74,70 @@ def list_offers(
             offer_dict["application_role"] = application.role
         
         result.append(offer_dict)
+    
+    return result
+
+
+@router.get("/from-applications", response_model=list)
+def get_offers_from_applications(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get all offers, including virtual offers from applications with 'offer' status."""
+    existing_offers = db.query(Offer).all()
+    offer_ids = {o.application_id for o in existing_offers}
+    
+    applications_with_offers = db.query(Application).filter(
+        Application.status == 'offer'
+    ).all()
+    
+    result = []
+    
+    for app in applications_with_offers:
+        if app.id in offer_ids:
+            continue
+        
+        result.append({
+            "id": f"app-{app.id}",
+            "application_id": app.id,
+            "base_salary": app.salary or 0,
+            "currency": "USD",
+            "bonus": None,
+            "equity": None,
+            "benefits": [],
+            "pros": [],
+            "cons": [],
+            "start_date": None,
+            "deadline": None,
+            "status": "pending",
+            "notes": None,
+            "created_at": datetime.now().isoformat(),
+            "application_company": app.company,
+            "application_role": app.role,
+            "is_virtual": True
+        })
+    
+    for offer in existing_offers:
+        app = db.query(Application).filter(Application.id == offer.application_id).first()
+        result.append({
+            "id": offer.id,
+            "application_id": offer.application_id,
+            "base_salary": offer.base_salary,
+            "currency": offer.currency,
+            "bonus": offer.bonus,
+            "equity": offer.equity,
+            "benefits": offer.benefits.split(",") if offer.benefits and offer.benefits != "[]" else [],
+            "pros": offer.pros.split(",") if offer.pros and offer.pros != "[]" else [],
+            "cons": offer.cons.split(",") if offer.cons and offer.cons != "[]" else [],
+            "start_date": offer.start_date.isoformat() if offer.start_date else None,
+            "deadline": offer.deadline.isoformat() if offer.deadline else None,
+            "status": offer.status,
+            "notes": offer.notes,
+            "created_at": offer.created_at.isoformat(),
+            "application_company": app.company if app else None,
+            "application_role": app.role if app else None,
+            "is_virtual": False
+        })
     
     return result
 
@@ -95,6 +166,8 @@ def compare_offers(
             "bonus": offer.bonus,
             "equity": offer.equity,
             "benefits": offer.benefits.split(",") if offer.benefits and offer.benefits != "[]" else [],
+            "pros": offer.pros.split(",") if offer.pros and offer.pros != "[]" else [],
+            "cons": offer.cons.split(",") if offer.cons and offer.cons != "[]" else [],
             "start_date": offer.start_date.isoformat() if offer.start_date else None,
             "deadline": offer.deadline.isoformat() if offer.deadline else None,
             "status": offer.status,
@@ -129,6 +202,8 @@ def get_offer(offer_id: int, db: Session = Depends(get_db)):
         "bonus": offer.bonus,
         "equity": offer.equity,
         "benefits": offer.benefits.split(",") if offer.benefits and offer.benefits != "[]" else [],
+        "pros": offer.pros.split(",") if offer.pros and offer.pros != "[]" else [],
+        "cons": offer.cons.split(",") if offer.cons and offer.cons != "[]" else [],
         "start_date": offer.start_date.isoformat() if offer.start_date else None,
         "deadline": offer.deadline.isoformat() if offer.deadline else None,
         "status": offer.status,
@@ -157,6 +232,8 @@ def create_offer(offer: OfferCreate, db: Session = Depends(get_db)):
     start_date = date.fromisoformat(offer.start_date) if offer.start_date else None
     deadline = date.fromisoformat(offer.deadline) if offer.deadline else None
     benefits_str = ",".join(offer.benefits) if offer.benefits else "[]"
+    pros_str = ",".join(offer.pros) if offer.pros else "[]"
+    cons_str = ",".join(offer.cons) if offer.cons else "[]"
     
     db_offer = Offer(
         application_id=offer.application_id,
@@ -165,6 +242,8 @@ def create_offer(offer: OfferCreate, db: Session = Depends(get_db)):
         bonus=offer.bonus,
         equity=offer.equity,
         benefits=benefits_str,
+        pros=pros_str,
+        cons=cons_str,
         start_date=start_date,
         deadline=deadline,
         status=offer.status,
@@ -183,6 +262,8 @@ def create_offer(offer: OfferCreate, db: Session = Depends(get_db)):
         "bonus": db_offer.bonus,
         "equity": db_offer.equity,
         "benefits": offer.benefits,
+        "pros": offer.pros,
+        "cons": offer.cons,
         "start_date": db_offer.start_date.isoformat() if db_offer.start_date else None,
         "deadline": db_offer.deadline.isoformat() if db_offer.deadline else None,
         "status": db_offer.status,
@@ -208,6 +289,10 @@ def update_offer(offer_id: int, offer_update: OfferUpdate, db: Session = Depends
             setattr(db_offer, field, date.fromisoformat(value))
         elif field == "benefits" and value is not None:
             setattr(db_offer, "benefits", ",".join(value))
+        elif field == "pros" and value is not None:
+            setattr(db_offer, "pros", ",".join(value))
+        elif field == "cons" and value is not None:
+            setattr(db_offer, "cons", ",".join(value))
         else:
             setattr(db_offer, field, value)
     
@@ -216,6 +301,8 @@ def update_offer(offer_id: int, offer_update: OfferUpdate, db: Session = Depends
     
     application = db.query(Application).filter(Application.id == db_offer.application_id).first()
     benefits_list = db_offer.benefits.split(",") if db_offer.benefits and db_offer.benefits != "[]" else []
+    pros_list = db_offer.pros.split(",") if db_offer.pros and db_offer.pros != "[]" else []
+    cons_list = db_offer.cons.split(",") if db_offer.cons and db_offer.cons != "[]" else []
     
     return {
         "id": db_offer.id,
@@ -225,6 +312,8 @@ def update_offer(offer_id: int, offer_update: OfferUpdate, db: Session = Depends
         "bonus": db_offer.bonus,
         "equity": db_offer.equity,
         "benefits": benefits_list,
+        "pros": pros_list,
+        "cons": cons_list,
         "start_date": db_offer.start_date.isoformat() if db_offer.start_date else None,
         "deadline": db_offer.deadline.isoformat() if db_offer.deadline else None,
         "status": db_offer.status,
@@ -246,3 +335,57 @@ def delete_offer(offer_id: int, db: Session = Depends(get_db)):
     db.commit()
     
     return {"message": "Offer deleted successfully"}
+
+
+@router.post("/from-application/{application_id}", response_model=OfferResponse)
+def create_offer_from_application(
+    application_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Create an offer from an application that has 'offer' status."""
+    application = db.query(Application).filter(
+        Application.id == application_id,
+        Application.user_id == current_user.id
+    ).first()
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    if application.status != 'offer':
+        raise HTTPException(status_code=400, detail="Application must have 'offer' status")
+    
+    existing_offer = db.query(Offer).filter(Offer.application_id == application_id).first()
+    if existing_offer:
+        raise HTTPException(status_code=400, detail="Offer already exists for this application")
+    
+    db_offer = Offer(
+        application_id=application_id,
+        base_salary=application.salary or 0,
+        currency='USD',
+        status='pending',
+        pros='[]',
+        cons='[]'
+    )
+    
+    db.add(db_offer)
+    db.commit()
+    db.refresh(db_offer)
+    
+    return {
+        "id": db_offer.id,
+        "application_id": db_offer.application_id,
+        "base_salary": db_offer.base_salary,
+        "currency": db_offer.currency,
+        "bonus": db_offer.bonus,
+        "equity": db_offer.equity,
+        "benefits": [],
+        "pros": [],
+        "cons": [],
+        "start_date": db_offer.start_date.isoformat() if db_offer.start_date else None,
+        "deadline": db_offer.deadline.isoformat() if db_offer.deadline else None,
+        "status": db_offer.status,
+        "notes": db_offer.notes,
+        "created_at": db_offer.created_at.isoformat(),
+        "application_company": application.company,
+        "application_role": application.role
+    }

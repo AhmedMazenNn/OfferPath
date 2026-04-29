@@ -14,8 +14,10 @@ What does this file do?
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from app.routes import applications, interviews, offers, analytics, auth, admin
+from app.database import engine
 
 # Create the FastAPI app
 app = FastAPI(
@@ -23,6 +25,39 @@ app = FastAPI(
     description="API for OfferPath - Job Application Tracker",
     version="1.0.0"
 )
+
+@app.on_event("startup")
+def startup_event():
+    """Create missing columns on startup."""
+    try:
+        with engine.connect() as conn:
+            try:
+                conn.execute(text("ALTER TABLE offers ADD COLUMN pros TEXT DEFAULT '[]'"))
+                conn.commit()
+            except Exception:
+                pass
+            try:
+                conn.execute(text("ALTER TABLE offers ADD COLUMN cons TEXT DEFAULT '[]'"))
+                conn.commit()
+            except Exception:
+                pass
+            try:
+                conn.execute(text("ALTER TABLE interviews ADD COLUMN is_remote BOOLEAN DEFAULT true"))
+                conn.commit()
+            except Exception:
+                pass
+            try:
+                conn.execute(text("ALTER TABLE interviews ADD COLUMN meeting_link TEXT"))
+                conn.commit()
+            except Exception:
+                pass
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN avatar TEXT"))
+                conn.commit()
+            except Exception:
+                pass
+    except Exception:
+        pass
 
 # ============================================
 # CORS Configuration

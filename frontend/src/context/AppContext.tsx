@@ -14,6 +14,7 @@ interface AppContextType {
   updateApplication: (id: string, updates: Partial<Application>) => Promise<Application>
   deleteApplication: (id: string) => Promise<void>
   refetchApplications: () => void
+  updateProfile: (updates: { name?: string; email?: string; avatar?: string; password?: string }) => Promise<void>
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -125,6 +126,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }
 
   const updateApplication = async (id: string, updates: Partial<Application>): Promise<Application> => {
+    const currentApp = applications.find((app) => app.id === id)
+    if (currentApp) {
+      const optimisticApp: Application = {
+        ...currentApp,
+        ...updates,
+        currentStageIndex: updates.currentStageIndex !== undefined ? updates.currentStageIndex : currentApp.currentStageIndex,
+        customStages: updates.customStages !== undefined ? updates.customStages : currentApp.customStages,
+      }
+      setApplications((prev) =>
+        prev.map((app) => (app.id === id ? optimisticApp : app))
+      )
+    }
     try {
       const updatedApp = await applicationsApi.update(id, updates)
       setApplications((prev) =>
@@ -132,6 +145,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       )
       return updatedApp
     } catch (error) {
+      if (currentApp) {
+        setApplications((prev) =>
+          prev.map((app) => (app.id === id ? currentApp : app))
+        )
+      }
       console.error('Failed to update application:', error)
       throw error
     }
@@ -153,6 +171,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const updateProfile = async (updates: { name?: string; email?: string; avatar?: string; password?: string }) => {
+    try {
+      const updatedUser = await authApi.updateProfile(updates)
+      const userWithAdmin = {
+        ...updatedUser,
+        isAdmin: updatedUser.is_admin || false
+      }
+      localStorage.setItem('offerpath_user', JSON.stringify(userWithAdmin))
+      setUser(userWithAdmin)
+      // Sync with Chrome extension
+      const token = localStorage.getItem('offerpath_token')
+      syncWithExtension(token, userWithAdmin)
+    } catch (error) {
+      console.error('Failed to update profile:', error)
+      throw error
+    }
+  }
+
   return (
     <AppContext.Provider
       value={{
@@ -167,6 +203,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         updateApplication,
         deleteApplication,
         refetchApplications,
+        updateProfile,
       }}
     >
       {children}

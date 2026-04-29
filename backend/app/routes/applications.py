@@ -22,7 +22,7 @@ import json
 from datetime import datetime
 
 from app.database import get_db, init_db
-from app.models import Application, ApplicationCreate, ApplicationUpdate, ApplicationResponse, User
+from app.models import Application, ApplicationCreate, ApplicationUpdate, ApplicationResponse, User, Offer, Interview
 from app.routes.auth import get_current_user
 
 # Create a router
@@ -150,6 +150,8 @@ def update_application(
     
     Only include fields that were provided.
     Returns 404 if not found.
+    
+    When status changes to "offer", automatically creates an offer entry.
     """
     application = db.query(Application).filter(
         Application.id == application_id,
@@ -161,7 +163,11 @@ def update_application(
             detail=f"Application with id {application_id} not found"
         )
     
+    old_status = application.status
+    old_stage_index = application.current_stage_index or 0
     update_data = updates.model_dump(exclude_unset=True)
+    new_status = update_data.get('status', old_status)
+    new_stage_index = update_data.get('current_stage_index', old_stage_index)
     
     for field, value in update_data.items():
         if value is not None:
@@ -172,10 +178,38 @@ def update_application(
             else:
                 setattr(application, field, value)
     
+    if new_stage_index != old_stage_index:
+        custom_stages_list = application.custom_stages.split(',') if application.custom_stages else ['Applied', 'Screening', 'Interview', 'Offer']
+        if new_stage_index < len(custom_stages_list):
+            stage_name = custom_stages_list[new_stage_index].strip().lower()
+            if 'offer' in stage_name:
+                new_status = 'offer'
+            elif 'reject' in stage_name:
+                new_status = 'rejected'
+            elif stage_name in ['interview', 'technical', 'onsite']:
+                new_status = 'interview'
+            elif stage_name in ['screening', 'phone']:
+                new_status = 'screening'
+            else:
+                new_status = 'applied'
+            application.status = new_status
+    
     application.last_updated = datetime.now()
     
     db.commit()
     db.refresh(application)
+    
+    if old_status != 'offer' and new_status == 'offer':
+        existing_offer = db.query(Offer).filter(Offer.application_id == application_id).first()
+        if not existing_offer:
+            db_offer = Offer(
+                application_id=application_id,
+                base_salary=application.salary or 0,
+                currency='USD',
+                status='pending'
+            )
+            db.add(db_offer)
+            db.commit()
     
     return application
 
@@ -191,7 +225,7 @@ def delete_application(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Delete an application.
+    Delete an application and all related interviews and offers.
     
     Returns 404 if not found.
     Returns 204 (No Content) on success.
@@ -206,6 +240,8 @@ def delete_application(
             detail=f"Application with id {application_id} not found"
         )
     
+    db.query(Interview).filter(Interview.application_id == application_id).delete(synchronize_session=False)
+    db.query(Offer).filter(Offer.application_id == application_id).delete(synchronize_session=False)
     db.delete(application)
     db.commit()
     

@@ -19,7 +19,7 @@ export function StatusBadge({ status, className = '' }: StatusBadgeProps) {
   
   return (
     <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${colors.bg} ${colors.text} ${colors.border} ${className}`}
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border shadow-sm ${colors.bg} ${colors.text} ${colors.border} ${className}`}
     >
       {STATUS_LABELS[status]}
     </span>

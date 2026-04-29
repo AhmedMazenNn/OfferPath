@@ -50,7 +50,7 @@ function AppContent() {
   return (
     <Layout onQuickLog={handleQuickLog} isAuthenticated={true}>
       <Routes>
-        <Route path="/" element={<Dashboard />} />
+        <Route path="/" element={<Dashboard onQuickLog={handleQuickLog} />} />
         <Route path="/applications" element={<Applications onEdit={handleEdit} onSelect={() => {}} />} />
         <Route path="/applications/:id" element={<ApplicationDetail onEdit={handleEdit} />} />
         <Route path="/interviews" element={<Interviews />} />

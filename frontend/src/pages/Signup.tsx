@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, UserPlus, User, Mail, Lock } from 'lucide-react'
 import { Logo } from '../components/ui/Logo'
 import { useAppContext } from '../context/AppContext'
 
@@ -29,12 +29,12 @@ export function Signup() {
     setError('')
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match')
+      setError('Sequences do not align')
       return
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters')
+      setError('Insufficient character count')
       return
     }
 
@@ -42,248 +42,161 @@ export function Signup() {
 
     try {
       await signup(email, name || email.split('@')[0], password)
-      // Navigation will happen via useEffect
     } catch (err: any) {
-      setError(err.message || 'Signup failed. Make sure the backend is running.')
+      setError(err.message || 'Initialization failed.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-green-50 dark:from-slate-950 dark:via-slate-900 dark:to-green-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
-      {/* Animated background decorations */}
-      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        <motion.div
-          animate={{
-            scale: [1, 1.3, 1],
-            opacity: [0.2, 0.4, 0.2],
-          }}
-          transition={{
-            duration: 10,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-          className="absolute -top-1/4 -right-1/4 w-[500px] h-[500px] bg-gradient-to-br from-green-200 to-emerald-400 dark:from-green-800 dark:to-emerald-600 rounded-full blur-3xl opacity-30"
-        />
-        <motion.div
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.3, 0.5, 0.3],
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 1
-          }}
-          className="absolute -bottom-1/4 -left-1/4 w-[500px] h-[500px] bg-gradient-to-tr from-teal-200 to-cyan-300 dark:from-teal-800 dark:to-cyan-700 rounded-full blur-3xl opacity-20"
-        />
-      </div>
-
-      <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="flex justify-center mb-8"
-        >
-          <Logo size="lg" />
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.1, duration: 0.5 }}
-          className="text-center"
-        >
-          <h2 className="text-4xl font-extrabold text-slate-900 dark:text-white mb-2">
-            Create your account
-          </h2>
-          <p className="text-lg text-slate-600 dark:text-slate-400">
-            Start tracking your job applications today
-          </p>
-        </motion.div>
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 relative overflow-hidden">
+      {/* Dynamic Background */}
+      <div className="absolute inset-0 z-0">
+         <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-emerald-600/10 rounded-full blur-[120px] animate-pulse" />
+         <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-primary-600/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '2s' }} />
       </div>
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2, duration: 0.5 }}
-        className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10"
+        className="w-full max-w-md relative z-10"
       >
-        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl py-8 px-4 shadow-2xl sm:rounded-3xl sm:px-10 border border-slate-200/50 dark:border-slate-700/50">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div>
-              <label
-                htmlFor="name"
-                className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2"
-              >
-                Full Name
+        <div className="flex flex-col items-center mb-10">
+           <motion.div 
+             initial={{ scale: 0.8 }}
+             animate={{ scale: 1 }}
+             className="mb-6"
+           >
+              <Logo size="lg" />
+           </motion.div>
+           <h1 className="text-4xl font-black text-white tracking-tight text-center mb-2 uppercase italic leading-none">Initialize Profile</h1>
+           <p className="text-slate-400 font-bold uppercase tracking-[0.3em] text-[10px] text-center">Join the Intelligence Network</p>
+        </div>
+
+        <div className="glass-card p-10 border border-white/10 shadow-2xl relative group">
+          <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none rounded-[2rem]" />
+          
+          <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                <User className="w-3 h-3" />
+                Legal Identifier
               </label>
-              <div>
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="appearance-none block w-full px-4 py-3.5 border border-slate-300 dark:border-slate-600 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent sm:text-sm bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white transition-all"
-                  placeholder="John Doe"
-                />
-              </div>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-3.5 text-white font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all placeholder:text-slate-600"
+                placeholder="Full Name"
+              />
             </div>
 
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2"
-              >
-                Email address
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                <Mail className="w-3 h-3" />
+                Email Endpoint
               </label>
-              <div>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="appearance-none block w-full px-4 py-3.5 border border-slate-300 dark:border-slate-600 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent sm:text-sm bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white transition-all"
-                  placeholder="you@example.com"
-                />
-              </div>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-3.5 text-white font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all placeholder:text-slate-600"
+                placeholder="id@offerpath.com"
+              />
             </div>
 
-            <div>
-               <label
-                 htmlFor="password"
-                 className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2"
-               >
-                 Password
-               </label>
-               <div className="relative">
-                 <input
-                   id="password"
-                   name="password"
-                   type={showPassword ? "text" : "password"}
-                   autoComplete="new-password"
-                   required
-                   minLength={6}
-                   value={password}
-                   onChange={(e) => setPassword(e.target.value)}
-                   className="appearance-none block w-full px-4 py-3.5 border border-slate-300 dark:border-slate-600 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent sm:text-sm bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white transition-all"
-                   placeholder="At least 6 characters"
-                 />
-                 <button
-                   type="button"
-                   onClick={() => setShowPassword(!showPassword)}
-                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                   aria-label="Toggle password visibility"
-                 >
-                   {showPassword ? (
-                     <Eye className="w-4 h-4" />
-                   ) : (
-                     <EyeOff className="w-4 h-4" />
-                   )}
-                 </button>
-               </div>
-             </div>
+            <div className="grid grid-cols-1 gap-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                  <Lock className="w-3 h-3" />
+                  Primary Key
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-3.5 text-white font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all placeholder:text-slate-600"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
 
-            <div>
-               <label
-                 htmlFor="confirm-password"
-                 className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2"
-               >
-                 Confirm Password
-               </label>
-               <div className="relative">
-                 <input
-                   id="confirm-password"
-                   name="confirm-password"
-                   type={showConfirmPassword ? "text" : "password"}
-                   autoComplete="new-password"
-                   required
-                   value={confirmPassword}
-                   onChange={(e) => setConfirmPassword(e.target.value)}
-                   className="appearance-none block w-full px-4 py-3.5 border border-slate-300 dark:border-slate-600 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent sm:text-sm bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white transition-all"
-                   placeholder="Re-enter your password"
-                 />
-                 <button
-                   type="button"
-                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                   aria-label="Toggle password visibility"
-                 >
-                   {showConfirmPassword ? (
-                     <Eye className="w-4 h-4" />
-                   ) : (
-                     <EyeOff className="w-4 h-4" />
-                   )}
-                 </button>
-               </div>
-             </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                  <Lock className="w-3 h-3" />
+                  Verify Key
+                </label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-3.5 text-white font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all placeholder:text-slate-600"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            </div>
 
             {error && (
               <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3"
               >
-                <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                <p className="text-[10px] font-black uppercase tracking-widest text-red-500">{error}</p>
               </motion.div>
             )}
 
-            <div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full flex justify-center items-center py-3.5 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                    className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
-                  />
-                ) : (
-                  'Create account'
-                )}
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] shadow-xl shadow-emerald-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3 group/btn"
+            >
+              {loading ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>
+                  Initialize Protocol
+                  <UserPlus className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
+                </>
+              )}
+            </button>
           </form>
 
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-300 dark:border-slate-600" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white/80 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400">
-                  Already have an account?
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <a
-                href="/login"
-                className="w-full flex justify-center py-3.5 px-4 border border-slate-300 dark:border-slate-600 rounded-xl shadow-sm text-sm font-medium text-slate-700 dark:text-slate-300 bg-white/50 dark:bg-slate-900/50 hover:bg-slate-50 dark:hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all"
-              >
-                Sign in instead
-              </a>
-            </div>
-          </div>
-
-          <div className="mt-6 text-center">
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Make sure the backend is running at <code className="bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">http://localhost:8000</code>
-            </p>
+          <div className="mt-10 text-center relative z-10">
+             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-6">Existing Identity Found?</p>
+             <Link 
+               to="/login" 
+               className="inline-flex items-center gap-2 py-3 px-8 bg-white/5 hover:bg-white/10 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/5 transition-all"
+             >
+                Login to Console
+             </Link>
           </div>
         </div>
       </motion.div>
     </div>
   )
 }
+

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { X } from 'lucide-react'
+import { X, Briefcase, Globe, Calendar, Link as LinkIcon, FileText, Plus } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAppContext } from '../context/AppContext'
 import { DEFAULT_STAGES } from '../types'
@@ -60,146 +60,145 @@ export function NewApplicationModal({
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-slate-950/40 backdrop-blur-md z-[100]"
           />
 
-          {/* Modal */}
-          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 flex items-center justify-center z-[110] p-4 pointer-events-none">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ duration: 0.2 }}
-              className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg"
+              className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl w-full max-w-xl overflow-hidden border border-slate-200 dark:border-slate-800 pointer-events-auto"
             >
-              {/* Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800">
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                  Add New Application
-                </h2>
+              <div className="relative p-10">
+                {/* Close Button */}
                 <button
                   onClick={onClose}
-                  className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                  className="absolute top-8 right-8 p-3 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors bg-slate-100 dark:bg-slate-800 rounded-2xl"
                 >
                   <X className="w-5 h-5" />
                 </button>
-              </div>
 
-              {/* Form */}
-              <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                {/* Company */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Company *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.company}
-                    onChange={(e) => handleChange('company', e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="e.g., Google"
-                  />
+                <div className="mb-10">
+                  <div className="w-12 h-12 bg-primary-500/10 rounded-2xl flex items-center justify-center mb-6">
+                    <Briefcase className="w-6 h-6 text-primary-500" />
+                  </div>
+                  <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight leading-none mb-2">
+                    Initialize Entry
+                  </h2>
+                  <p className="text-slate-500 font-bold uppercase tracking-[0.2em] text-[10px]">Capture application metadata</p>
                 </div>
 
-                {/* Job Title */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Job Title *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.role}
-                    onChange={(e) => handleChange('role', e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="e.g., Senior Frontend Engineer"
-                  />
-                </div>
+                <form onSubmit={handleSubmit} className="space-y-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                        <Globe className="w-3 h-3" />
+                        Target Entity
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.company}
+                        onChange={(e) => handleChange('company', e.target.value)}
+                        className="input-base"
+                        placeholder="Organization Name"
+                      />
+                    </div>
 
-                {/* Job URL */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Job URL
-                  </label>
-                  <input
-                    type="url"
-                    value={formData.jobUrl}
-                    onChange={(e) => handleChange('jobUrl', e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="https://..."
-                  />
-                </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                        <Briefcase className="w-3 h-3" />
+                        Designation
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.role}
+                        onChange={(e) => handleChange('role', e.target.value)}
+                        className="input-base"
+                        placeholder="Professional Role"
+                      />
+                    </div>
+                  </div>
 
-                {/* Date Applied & Source */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                      Date Applied
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                      <LinkIcon className="w-3 h-3" />
+                      Digital Source
                     </label>
                     <input
-                      type="date"
-                      value={formData.appliedDate}
-                      onChange={(e) => handleChange('appliedDate', e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      type="url"
+                      value={formData.jobUrl}
+                      onChange={(e) => handleChange('jobUrl', e.target.value)}
+                      className="input-base"
+                      placeholder="https://career-portal.path"
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                      Source
-                    </label>
-                    <select
-                      value={formData.source}
-                      onChange={(e) => handleChange('source', e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    >
-                      <option value="LinkedIn Easy Apply">LinkedIn Easy Apply</option>
-                      <option value="Company Site">Company Site</option>
-                      <option value="Referral">Referral</option>
-                      <option value="Job Board">Job Board</option>
-                      <option value="Other">Other</option>
-                    </select>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                        <Calendar className="w-3 h-3" />
+                        Timestamp
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.appliedDate}
+                        onChange={(e) => handleChange('appliedDate', e.target.value)}
+                        className="input-base"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                        <FileText className="w-3 h-3" />
+                        Channel
+                      </label>
+                      <select
+                        value={formData.source}
+                        onChange={(e) => handleChange('source', e.target.value)}
+                        className="input-base appearance-none cursor-pointer"
+                      >
+                        <option value="LinkedIn Easy Apply">LinkedIn Easy Apply</option>
+                        <option value="Company Site">Company Site</option>
+                        <option value="Referral">Referral</option>
+                        <option value="Job Board">Job Board</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
                   </div>
-                </div>
 
-                {/* Notes */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Initial Notes
-                  </label>
-                  <textarea
-                    value={formData.notes}
-                    onChange={(e) => handleChange('notes', e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
-                    placeholder="Any notes about this application..."
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                      <FileText className="w-3 h-3" />
+                      Internal Intelligence
+                    </label>
+                    <textarea
+                      value={formData.notes}
+                      onChange={(e) => handleChange('notes', e.target.value)}
+                      rows={3}
+                      className="input-base resize-none py-4"
+                      placeholder="Contextual observations..."
+                    />
+                  </div>
 
-                {/* Actions */}
-                <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="px-4 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors"
-                  >
-                    Add Application
-                  </button>
-                </div>
-              </form>
+                  <div className="pt-6 flex justify-end">
+                    <button
+                      type="submit"
+                      className="btn-primary py-4 px-12 text-[10px] font-black uppercase tracking-[0.3em] shadow-xl shadow-primary-500/20 flex items-center gap-3"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Initialize Record
+                    </button>
+                  </div>
+                </form>
+              </div>
             </motion.div>
           </div>
         </>

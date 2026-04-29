@@ -121,6 +121,7 @@ def signup(user_data: UserCreate, db: Session = Depends(get_db)):
             "id": str(db_user.id),
             "name": db_user.name,
             "email": db_user.email,
+            "avatar": db_user.avatar,
             "is_admin": db_user.is_admin
         },
         "token": access_token
@@ -154,6 +155,7 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
             "id": str(user.id),
             "name": user.name,
             "email": user.email,
+            "avatar": user.avatar,
             "is_admin": user.is_admin
         },
         "token": access_token
@@ -173,6 +175,8 @@ def update_me(
     """Update current user profile."""
     if user_update.name is not None:
         current_user.name = user_update.name
+    if user_update.avatar is not None:
+        current_user.avatar = user_update.avatar
     if user_update.email is not None:
         # Check if new email already exists
         existing = db.query(User).filter(

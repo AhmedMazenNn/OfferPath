@@ -177,6 +177,8 @@ export const interviewsApi = {
       interviewerName: item.interviewer_name,
       interviewerEmail: item.interviewer_email,
       location: item.location,
+      isRemote: item.is_remote,
+      meetingLink: item.meeting_link,
       notes: item.notes,
       status: item.status,
       createdAt: item.created_at,
@@ -196,6 +198,8 @@ export const interviewsApi = {
       interviewerName: item.interviewer_name,
       interviewerEmail: item.interviewer_email,
       location: item.location,
+      isRemote: item.is_remote,
+      meetingLink: item.meeting_link,
       notes: item.notes,
       status: item.status,
       createdAt: item.created_at,
@@ -215,6 +219,8 @@ export const interviewsApi = {
       interviewerName: item.interviewer_name,
       interviewerEmail: item.interviewer_email,
       location: item.location,
+      isRemote: item.is_remote,
+      meetingLink: item.meeting_link,
       notes: item.notes,
       status: item.status,
       createdAt: item.created_at,
@@ -232,6 +238,8 @@ export const interviewsApi = {
       interviewer_name: interview.interviewerName,
       interviewer_email: interview.interviewerEmail,
       location: interview.location,
+      is_remote: interview.isRemote,
+      meeting_link: interview.meetingLink,
       notes: interview.notes,
       status: interview.status,
     }
@@ -301,13 +309,44 @@ export const interviewsApi = {
 // ============================================
 
 export const offersApi = {
+  /** Fetch real offers for a specific application (uses /offers endpoint directly) */
+  listByApplication: async (applicationId: string): Promise<Offer[]> => {
+    const data = await fetchWithAuth(`/offers?application_id=${applicationId}`)
+    return data.map((item: any) => {
+      const parse = (v: any): string[] => {
+        if (!v) return []
+        if (Array.isArray(v)) return v
+        try { const p = JSON.parse(v); return Array.isArray(p) ? p : v.split(',').map((s: string) => s.trim()).filter(Boolean) }
+        catch { return v.split(',').map((s: string) => s.trim()).filter(Boolean) }
+      }
+      return {
+        id: String(item.id),
+        applicationId: String(item.application_id),
+        baseSalary: item.base_salary,
+        currency: item.currency,
+        bonus: item.bonus,
+        equity: item.equity,
+        benefits: parse(item.benefits),
+        pros: parse(item.pros),
+        cons: parse(item.cons),
+        startDate: item.start_date,
+        deadline: item.deadline,
+        status: item.status,
+        notes: item.notes,
+        createdAt: item.created_at,
+        applicationCompany: item.application_company,
+        applicationRole: item.application_role,
+      }
+    })
+  },
+
   list: async (params?: { status?: string; application_id?: string }): Promise<Offer[]> => {
     const query = new URLSearchParams()
     if (params?.status) query.set('status', params.status)
     if (params?.application_id) query.set('application_id', params.application_id)
     
     const queryString = query.toString()
-    const data = await fetchWithAuth(`/offers${queryString ? '?' + queryString : ''}`)
+    const data = await fetchWithAuth(`/offers/from-applications${queryString ? '?' + queryString : ''}`)
     return data.map((item: any) => {
       // Parse benefits from string to array
       let benefits: string[] = []
@@ -326,6 +365,36 @@ export const offersApi = {
         }
       }
       
+      // Parse pros from string to array
+      let pros: string[] = []
+      if (item.pros) {
+        if (typeof item.pros === 'string') {
+          try {
+            const parsed = JSON.parse(item.pros)
+            pros = Array.isArray(parsed) ? parsed : item.pros.split(',').map((s: string) => s.trim()).filter(Boolean)
+          } catch {
+            pros = item.pros.split(',').map((s: string) => s.trim()).filter(Boolean)
+          }
+        } else if (Array.isArray(item.pros)) {
+          pros = item.pros
+        }
+      }
+      
+      // Parse cons from string to array
+      let cons: string[] = []
+      if (item.cons) {
+        if (typeof item.cons === 'string') {
+          try {
+            const parsed = JSON.parse(item.cons)
+            cons = Array.isArray(parsed) ? parsed : item.cons.split(',').map((s: string) => s.trim()).filter(Boolean)
+          } catch {
+            cons = item.cons.split(',').map((s: string) => s.trim()).filter(Boolean)
+          }
+        } else if (Array.isArray(item.cons)) {
+          cons = item.cons
+        }
+      }
+      
       return {
         id: String(item.id),
         applicationId: String(item.application_id),
@@ -334,6 +403,8 @@ export const offersApi = {
         bonus: item.bonus,
         equity: item.equity,
         benefits,
+        pros,
+        cons,
         startDate: item.start_date,
         deadline: item.deadline,
         status: item.status,
@@ -366,6 +437,36 @@ export const offersApi = {
         }
       }
       
+      // Parse pros from string to array
+      let pros: string[] = []
+      if (item.pros) {
+        if (typeof item.pros === 'string') {
+          try {
+            const parsed = JSON.parse(item.pros)
+            pros = Array.isArray(parsed) ? parsed : item.pros.split(',').map((s: string) => s.trim()).filter(Boolean)
+          } catch {
+            pros = item.pros.split(',').map((s: string) => s.trim()).filter(Boolean)
+          }
+        } else if (Array.isArray(item.pros)) {
+          pros = item.pros
+        }
+      }
+      
+      // Parse cons from string to array
+      let cons: string[] = []
+      if (item.cons) {
+        if (typeof item.cons === 'string') {
+          try {
+            const parsed = JSON.parse(item.cons)
+            cons = Array.isArray(parsed) ? parsed : item.cons.split(',').map((s: string) => s.trim()).filter(Boolean)
+          } catch {
+            cons = item.cons.split(',').map((s: string) => s.trim()).filter(Boolean)
+          }
+        } else if (Array.isArray(item.cons)) {
+          cons = item.cons
+        }
+      }
+      
       return {
         id: String(item.id),
         applicationId: String(item.application_id),
@@ -374,6 +475,8 @@ export const offersApi = {
         bonus: item.bonus,
         equity: item.equity,
         benefits,
+        pros,
+        cons,
         startDate: item.start_date,
         deadline: item.deadline,
         status: item.status,
@@ -387,6 +490,31 @@ export const offersApi = {
   
   get: async (id: string): Promise<Offer> => {
     const item = await fetchWithAuth(`/offers/${id}`)
+    // Parse pros and cons
+    let pros: string[] = []
+    if (item.pros) {
+      if (typeof item.pros === 'string') {
+        try {
+          pros = JSON.parse(item.pros)
+        } catch {
+          pros = item.pros.split(',').map((s: string) => s.trim()).filter(Boolean)
+        }
+      } else {
+        pros = item.pros
+      }
+    }
+    let cons: string[] = []
+    if (item.cons) {
+      if (typeof item.cons === 'string') {
+        try {
+          cons = JSON.parse(item.cons)
+        } catch {
+          cons = item.cons.split(',').map((s: string) => s.trim()).filter(Boolean)
+        }
+      } else {
+        cons = item.cons
+      }
+    }
     return {
       id: String(item.id),
       applicationId: String(item.application_id),
@@ -395,6 +523,8 @@ export const offersApi = {
       bonus: item.bonus,
       equity: item.equity,
       benefits: item.benefits || [],
+      pros,
+      cons,
       startDate: item.start_date,
       deadline: item.deadline,
       status: item.status,
@@ -413,6 +543,8 @@ export const offersApi = {
       bonus: offer.bonus,
       equity: offer.equity,
       benefits: offer.benefits,
+      pros: offer.pros,
+      cons: offer.cons,
       start_date: offer.startDate,
       deadline: offer.deadline,
       status: offer.status,
@@ -424,6 +556,32 @@ export const offersApi = {
       body: JSON.stringify(backendData),
     })
     
+    // Parse pros and cons
+    let pros: string[] = []
+    if (item.pros) {
+      if (typeof item.pros === 'string') {
+        try {
+          pros = JSON.parse(item.pros)
+        } catch {
+          pros = item.pros.split(',').map((s: string) => s.trim()).filter(Boolean)
+        }
+      } else {
+        pros = item.pros
+      }
+    }
+    let cons: string[] = []
+    if (item.cons) {
+      if (typeof item.cons === 'string') {
+        try {
+          cons = JSON.parse(item.cons)
+        } catch {
+          cons = item.cons.split(',').map((s: string) => s.trim()).filter(Boolean)
+        }
+      } else {
+        cons = item.cons
+      }
+    }
+    
     return {
       id: String(item.id),
       applicationId: String(item.application_id),
@@ -432,6 +590,8 @@ export const offersApi = {
       bonus: item.bonus,
       equity: item.equity,
       benefits: item.benefits || [],
+      pros,
+      cons,
       startDate: item.start_date,
       deadline: item.deadline,
       status: item.status,
@@ -449,6 +609,8 @@ export const offersApi = {
     if (updates.bonus !== undefined) backendData.bonus = updates.bonus
     if (updates.equity !== undefined) backendData.equity = updates.equity
     if (updates.benefits !== undefined) backendData.benefits = updates.benefits
+    if (updates.pros !== undefined) backendData.pros = updates.pros
+    if (updates.cons !== undefined) backendData.cons = updates.cons
     if (updates.startDate !== undefined) backendData.start_date = updates.startDate
     if (updates.deadline !== undefined) backendData.deadline = updates.deadline
     if (updates.status !== undefined) backendData.status = updates.status
@@ -459,6 +621,32 @@ export const offersApi = {
       body: JSON.stringify(backendData),
     })
     
+    // Parse pros and cons
+    let pros: string[] = []
+    if (item.pros) {
+      if (typeof item.pros === 'string') {
+        try {
+          pros = JSON.parse(item.pros)
+        } catch {
+          pros = item.pros.split(',').map((s: string) => s.trim()).filter(Boolean)
+        }
+      } else {
+        pros = item.pros
+      }
+    }
+    let cons: string[] = []
+    if (item.cons) {
+      if (typeof item.cons === 'string') {
+        try {
+          cons = JSON.parse(item.cons)
+        } catch {
+          cons = item.cons.split(',').map((s: string) => s.trim()).filter(Boolean)
+        }
+      } else {
+        cons = item.cons
+      }
+    }
+    
     return {
       id: String(item.id),
       applicationId: String(item.application_id),
@@ -467,6 +655,8 @@ export const offersApi = {
       bonus: item.bonus,
       equity: item.equity,
       benefits: item.benefits || [],
+      pros,
+      cons,
       startDate: item.start_date,
       deadline: item.deadline,
       status: item.status,
@@ -523,6 +713,13 @@ export const authApi = {
   
   getMe: async () => {
     return fetchWithAuth('/auth/me')
+  },
+  
+  updateProfile: async (updates: { name?: string; email?: string; avatar?: string; password?: string }) => {
+    return fetchWithAuth('/auth/me', {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    })
   },
 }
 

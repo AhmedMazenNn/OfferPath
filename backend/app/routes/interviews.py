@@ -99,6 +99,8 @@ def get_upcoming_interviews(
             "interviewer_name": interview.interviewer_name,
             "interviewer_email": interview.interviewer_email,
             "location": interview.location,
+            "is_remote": interview.is_remote,
+            "meeting_link": interview.meeting_link,
             "notes": interview.notes,
             "status": interview.status,
             "created_at": interview.created_at.isoformat(),
@@ -132,6 +134,8 @@ def get_interview(interview_id: int, db: Session = Depends(get_db)):
         "interviewer_name": interview.interviewer_name,
         "interviewer_email": interview.interviewer_email,
         "location": interview.location,
+        "is_remote": interview.is_remote,
+        "meeting_link": interview.meeting_link,
         "notes": interview.notes,
         "status": interview.status,
         "created_at": interview.created_at.isoformat(),
@@ -165,6 +169,8 @@ def create_interview(interview: InterviewCreate, db: Session = Depends(get_db)):
         interviewer_name=interview.interviewer_name,
         interviewer_email=interview.interviewer_email,
         location=interview.location,
+        is_remote=interview.is_remote,
+        meeting_link=interview.meeting_link,
         notes=interview.notes,
         status=interview.status
     )
@@ -172,6 +178,10 @@ def create_interview(interview: InterviewCreate, db: Session = Depends(get_db)):
     db.add(db_interview)
     db.commit()
     db.refresh(db_interview)
+    
+    if application.status != 'interview' and application.status != 'offer':
+        application.status = 'interview'
+        db.commit()
     
     return {
         "id": db_interview.id,
