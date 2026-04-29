@@ -323,7 +323,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   elements.openApp.addEventListener('click', (e) => {
     e.preventDefault();
-    chrome.tabs.create({ url: 'http://localhost:5173' });
+    chrome.tabs.create({ url: 'https://offer-path-weld.vercel.app' });
   });
 
   // Allow Enter key to submit
