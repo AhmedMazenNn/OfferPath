@@ -206,7 +206,7 @@ async function testApiConnection(sendResponse) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
     
-    const response = await fetch('http://127.0.0.1:8000/health', { 
+    const response = await fetch(`${API_BASE_URL.replace('/api', '')}/health`, { 
       signal: controller.signal 
     });
     clearTimeout(timeout);

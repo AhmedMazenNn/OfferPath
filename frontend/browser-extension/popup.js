@@ -26,6 +26,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     openApp: document.getElementById('open-app'),
   };
 
+  const API_BASE_URL = 'https://ahmedmazen-offerpath.hf.space/api';
+
   let currentJobData = null;
   let isAuthenticated = false;
 
@@ -185,7 +187,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     elements.submitLogin.textContent = 'Signing in...';
 
     try {
-      const API_BASE_URL = 'https://ahmedmazen-offerpath.hf.space/api';
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
