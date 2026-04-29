@@ -160,6 +160,7 @@ export function EditOfferModal({
                                   <option value="EUR">EUR</option>
                                   <option value="GBP">GBP</option>
                                   <option value="CAD">CAD</option>
+                                  <option value="EGP">EGP</option>
                                 </select>
                              </div>
                              <div className="space-y-2">
