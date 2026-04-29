@@ -14,24 +14,9 @@ pinned: false
 
 FastAPI backend for job application tracking.
 
-## Environment Variables
-
-Set these in Space settings (Repo secrets):
-
-| Variable | Description |
-|----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection string (Neon) |
-| `SECRET_KEY` | JWT secret key |
-| `CORS_ORIGINS` | Allowed origins (comma-separated) |
-| `DEBUG` | Set to `false` in production |
-
 ## API Endpoints
-
-- `/` - Root
-- `/health` - Health check
-- `/api/auth/*` - Authentication
-- `/api/applications/*` - Applications CRUD
-- `/api/interviews/*` - Interviews CRUD
-- `/api/offers/*` - Offers CRUD
-- `/api/analytics/*` - Analytics
-- `/api/admin/*` - Admin endpoints
+- /health - Health check
+- /api/auth/* - Authentication  
+- /api/applications/* - Applications
+- /api/interviews/* - Interviews
+- /api/offers/* - Offers
