@@ -133,7 +133,7 @@ function extractJobData() {
       .filter(t => t.trim().length > 3)[0] || '';
     
     if (pageTitle.length > 3) {
-      title = pageTitle.trim().split(' ').slice(0, 8).join(' ');
+      title = pageTitle.trim();
     }
   }
   

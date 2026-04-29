@@ -185,7 +185,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     elements.submitLogin.textContent = 'Signing in...';
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/auth/login', {
+      const API_BASE_URL = 'https://ahmedmazen-offerpath.hf.space/api';
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -243,7 +244,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     elements.submitSignup.textContent = 'Creating...';
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/auth/signup', {
+      const response = await fetch(`${API_BASE_URL}/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, name, password })

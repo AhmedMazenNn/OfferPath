@@ -1,6 +1,6 @@
 // background.js - Service worker for Chrome extension
 
-const API_BASE_URL = 'http://127.0.0.1:8000/api';
+const API_BASE_URL = 'https://ahmedmazen-offerpath.hf.space/api';
 
 // Background script loaded
 console.log('OfferPath: Background script loaded');
@@ -67,7 +67,7 @@ async function saveApplication(jobData, sendResponse) {
       source: jobData.source || 'Company Site',
       applied_date: new Date().toISOString().split('T')[0],
       current_stage_index: 0,
-      custom_stages: ['Applied', 'Screening', 'Phone Screen', 'Technical', 'Onsite', 'Offer'],
+      custom_stages: ['Applied', 'Screening', 'Interview', 'Offer'],
     };
     
     const response = await fetch(`${API_BASE_URL}/applications`, {
