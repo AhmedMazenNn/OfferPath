@@ -15,7 +15,6 @@ import { Login } from './pages/Login'
 import { Signup } from './pages/Signup'
 import { Settings } from './pages/Settings'
 import { AdminPanel } from './pages/AdminPanel'
-import { NotFound } from './pages/NotFound'
 import type { Application } from './types'
 
 const queryClient = new QueryClient({
@@ -52,6 +51,7 @@ function AppContent() {
     <Layout onQuickLog={handleQuickLog} isAuthenticated={true}>
       <Routes>
         <Route path="/" element={<Dashboard onQuickLog={handleQuickLog} />} />
+        <Route path="/dashboard" element={<Dashboard onQuickLog={handleQuickLog} />} />
         <Route path="/applications" element={<Applications onEdit={handleEdit} onSelect={() => {}} />} />
         <Route path="/applications/:id" element={<ApplicationDetail onEdit={handleEdit} />} />
         <Route path="/interviews" element={<Interviews />} />
@@ -59,7 +59,7 @@ function AppContent() {
         <Route path="/analytics" element={<Analytics />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/admin" element={<AdminPanel />} />
-        <Route path="*" element={<NotFound />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <NewApplicationModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
       {editingApp && <EditApplicationModal isOpen={true} onClose={closeEditModal} application={editingApp} />}
