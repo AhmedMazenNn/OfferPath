@@ -5,7 +5,7 @@ WORKDIR /app
 RUN useradd -m -u 1000 user
 
 COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt && pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY --chown=user backend/app ./app
 COPY --chown=user backend/run.py .
