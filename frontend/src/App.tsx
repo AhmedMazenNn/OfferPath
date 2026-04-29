@@ -15,6 +15,7 @@ import { Login } from './pages/Login'
 import { Signup } from './pages/Signup'
 import { Settings } from './pages/Settings'
 import { AdminPanel } from './pages/AdminPanel'
+import { NotFound } from './pages/NotFound'
 import type { Application } from './types'
 
 const queryClient = new QueryClient({
@@ -58,7 +59,7 @@ function AppContent() {
         <Route path="/analytics" element={<Analytics />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/admin" element={<AdminPanel />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
       <NewApplicationModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
       {editingApp && <EditApplicationModal isOpen={true} onClose={closeEditModal} application={editingApp} />}
