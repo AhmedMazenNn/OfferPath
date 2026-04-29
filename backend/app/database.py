@@ -18,15 +18,18 @@ env_path = Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(env_path)
 
 # Build DATABASE_URL from environment variables
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "5432")
-DB_NAME = os.getenv("DB_NAME", "offerpath")
-DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "")
+# Support full DATABASE_URL (for Neon/deployment) or build from individual vars (local)
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Build the URL
-password_part = f":{DB_PASSWORD}" if DB_PASSWORD else ""
-DATABASE_URL = f"postgresql://{DB_USER}{password_part}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+if not DATABASE_URL:
+    DB_HOST = os.getenv("DB_HOST", "localhost")
+    DB_PORT = os.getenv("DB_PORT", "5432")
+    DB_NAME = os.getenv("DB_NAME", "offerpath")
+    DB_USER = os.getenv("DB_USER", "postgres")
+    DB_PASSWORD = os.getenv("DB_PASSWORD", "")
+
+    password_part = f":{DB_PASSWORD}" if DB_PASSWORD else ""
+    DATABASE_URL = f"postgresql://{DB_USER}{password_part}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 print(f"Connecting to database: {DB_HOST}:{DB_PORT}/{DB_NAME}")
 

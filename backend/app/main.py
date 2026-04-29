@@ -15,6 +15,13 @@ What does this file do?
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
+import os
+from dotenv import load_dotenv
+
+env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env")
+load_dotenv(env_path)
+
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
 
 from app.routes import applications, interviews, offers, analytics, auth, admin
 from app.database import engine
@@ -66,10 +73,10 @@ def startup_event():
 # In production, you'd limit this to your actual domains
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods
-    allow_headers=["*"],  # Allow all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # ============================================

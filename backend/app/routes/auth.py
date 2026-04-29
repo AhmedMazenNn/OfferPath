@@ -12,12 +12,18 @@ Endpoints:
 
 from datetime import datetime, timedelta
 from typing import Optional
+import os
 
 import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, Security, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from jose import JWTError, jwt
+from dotenv import load_dotenv
+
+# Load environment variables
+env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env")
+load_dotenv(env_path)
 
 from app.database import get_db
 from app.models import User, UserCreate, UserLogin, UserResponse, UserUpdate
@@ -27,7 +33,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 # ============================================
 # JWT Configuration (load from .env in production)
 # ============================================
-SECRET_KEY = "offerpath-secret-key-change-in-production"
+SECRET_KEY = os.getenv("SECRET_KEY", "offerpath-secret-key-change-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 
