@@ -27,7 +27,7 @@ from app.routes.auth import get_current_user
 
 # Create a router
 # This is like a mini FastAPI app for these routes
-router = APIRouter(prefix="/api/applications", tags=["applications"])
+router = APIRouter(tags=["applications"])
 
 
 # Initialize database on module load

@@ -28,7 +28,7 @@ load_dotenv(env_path)
 from app.database import get_db
 from app.models import User, UserCreate, UserLogin, UserResponse, UserUpdate
 
-router = APIRouter(prefix="/api/auth", tags=["auth"])
+router = APIRouter(tags=["auth"])
 
 # ============================================
 # JWT Configuration (load from .env in production)

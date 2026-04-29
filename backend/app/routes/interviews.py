@@ -23,7 +23,7 @@ from sqlalchemy import desc
 from app.database import get_db
 from app.models import Interview, InterviewCreate, InterviewUpdate, InterviewResponse, Application
 
-router = APIRouter(prefix="/api/interviews", tags=["interviews"])
+router = APIRouter(tags=["interviews"])
 
 
 @router.get("", response_model=list[InterviewResponse])

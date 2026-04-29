@@ -83,12 +83,12 @@ app.add_middleware(
 # Include Routes
 # ============================================
 # This adds all the endpoints from route files
-app.include_router(applications.router)
-app.include_router(interviews.router)
-app.include_router(offers.router)
+app.include_router(applications.router, prefix="/api/applications")
+app.include_router(interviews.router, prefix="/api/interviews")
+app.include_router(offers.router, prefix="/api/offers")
 app.include_router(analytics.router, prefix="/api/analytics")
-app.include_router(auth.router)
-app.include_router(admin.router)
+app.include_router(auth.router, prefix="/api/auth")
+app.include_router(admin.router, prefix="/api/admin")
 
 
 # ============================================

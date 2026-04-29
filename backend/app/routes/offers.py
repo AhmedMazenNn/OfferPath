@@ -23,7 +23,7 @@ from app.database import get_db
 from app.models import Offer, OfferCreate, OfferUpdate, OfferResponse, Application, User
 from app.routes.auth import get_current_user
 
-router = APIRouter(prefix="/api/offers", tags=["offers"])
+router = APIRouter(tags=["offers"])
 
 
 @router.get("", response_model=list[OfferResponse])
