@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     openApp: document.getElementById('open-app'),
   };
 
-  const API_BASE_URL = 'https://ahmedmazen-offerpath.hf.space/api';
+  const API_BASE_URL = 'https://ahmedmazen-offer-path-backend.hf.space/api';
 
   let currentJobData = null;
   let isAuthenticated = false;

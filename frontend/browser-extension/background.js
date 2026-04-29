@@ -1,6 +1,6 @@
 // background.js - Service worker for Chrome extension
 
-const API_BASE_URL = 'https://ahmedmazen-offerpath.hf.space/api';
+const API_BASE_URL = 'https://ahmedmazen-offer-path-backend.hf.space/api';
 
 // Background script loaded
 console.log('OfferPath: Background script loaded');

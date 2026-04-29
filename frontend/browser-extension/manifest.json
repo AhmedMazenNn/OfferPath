@@ -10,7 +10,7 @@
     "tabs"
   ],
   "host_permissions": [
-    "https://ahmedmazen-offerpath.hf.space/*"
+    "https://ahmedmazen-offer-path-backend.hf.space/*"
   ],
   "icons": {
     "16": "icons/icon16.png",
