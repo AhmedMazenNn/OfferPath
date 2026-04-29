@@ -9,7 +9,14 @@
 import type { Application, ApplicationStatus, Interview, Offer, TimelineEvent } from '../types'
 import { DEFAULT_STAGES } from '../types'
 
-const API_URL = (import.meta.env.VITE_API_URL || 'https://ahmedmazen-offerpath.hf.space').replace('http://', 'https://')
+function getApiUrl() {
+  const base = import.meta.env.VITE_API_URL || 'https://ahmedmazen-offerpath.hf.space'
+  const url = new URL(base.endsWith('/') ? base.slice(0, -1) : base)
+  url.protocol = 'https:'
+  return url.origin
+}
+
+const API_URL = getApiUrl()
 
 // ============================================
 // Helper Functions
