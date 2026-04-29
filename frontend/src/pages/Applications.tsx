@@ -65,13 +65,6 @@ export function Applications({ onEdit, onSelect }: ApplicationsProps) {
             Review and organize your active job hunting funnel.
           </p>
         </div>
-        
-        <button
-          onClick={() => {}} // User can use Quick Log or similar
-          className="btn-primary py-2 px-5 text-xs font-bold uppercase tracking-wider shadow-xl shadow-primary-500/20"
-        >
-          + Add Application
-        </button>
       </div>
 
       {/* Filter Bar */}
