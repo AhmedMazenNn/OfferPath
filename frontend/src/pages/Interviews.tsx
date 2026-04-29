@@ -25,7 +25,13 @@ export function Interviews() {
   const [filter, setFilter] = useState<'upcoming' | 'past' | 'all'>('upcoming')
   const [scheduleModalApp, setScheduleModalApp] = useState<Application | null>(null)
 
+  const hasAuthToken = () => !!localStorage.getItem('offerpath_token')
+
   const loadInterviews = useCallback(async () => {
+    if (!hasAuthToken()) {
+      setLoading(false)
+      return
+    }
     try {
       setLoading(true)
       const data = await interviewsApi.list()
@@ -38,8 +44,9 @@ export function Interviews() {
   }, [])
 
   useEffect(() => {
+    if (!hasAuthToken()) return
     loadInterviews()
-  }, [loadInterviews])
+  }, [])
 
   // Apps in Interview stage that haven't had any interview scheduled yet
   const scheduledAppIds = new Set(interviews.map(i => i.applicationId))

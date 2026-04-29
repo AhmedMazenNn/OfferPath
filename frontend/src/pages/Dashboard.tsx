@@ -34,7 +34,10 @@ export function Dashboard({ onQuickLog }: { onQuickLog?: () => void }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [trends, setTrends] = useState<any>(null)
 
+  const hasAuthToken = () => !!localStorage.getItem('offerpath_token')
+
   const loadAnalytics = async () => {
+    if (!hasAuthToken()) return
     try {
       const [metrics, funnel, trendsData] = await Promise.all([
         analyticsApi.getMetrics(),
@@ -49,6 +52,7 @@ export function Dashboard({ onQuickLog }: { onQuickLog?: () => void }) {
   }
 
   const loadUpcomingInterviews = async () => {
+    if (!hasAuthToken()) return
     try {
       const data = await interviewsApi.getUpcoming(30)
       setUpcomingInterviews(data)
@@ -58,9 +62,10 @@ export function Dashboard({ onQuickLog }: { onQuickLog?: () => void }) {
   }
 
   useEffect(() => {
+    if (!hasAuthToken()) return
     loadAnalytics()
     loadUpcomingInterviews()
-  }, [loadAnalytics, loadUpcomingInterviews])
+  }, [])
 
   const statusGroups = useMemo(() => {
     const groups: Record<string, Application[]> = {}

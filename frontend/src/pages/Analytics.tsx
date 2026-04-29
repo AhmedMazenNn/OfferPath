@@ -18,6 +18,10 @@ import { BarChart3, TrendingUp, PieChart as PieIcon, Activity } from 'lucide-rea
 import { analyticsApi } from '../services/api'
 import { StatsCard } from '../components/ui/StatsCard'
 
+function hasAuthToken() {
+  return !!localStorage.getItem('offerpath_token')
+}
+
 export function Analytics() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [metrics, setMetrics] = useState<any>(null)
@@ -28,6 +32,10 @@ export function Analytics() {
   const [loading, setLoading] = useState(true)
 
   const loadAnalytics = async () => {
+    if (!hasAuthToken()) {
+      setLoading(false)
+      return
+    }
     try {
       setLoading(true)
       const [metricsData, funnelData, trendsData] = await Promise.all([
@@ -46,8 +54,9 @@ export function Analytics() {
   }
 
   useEffect(() => {
+    if (!hasAuthToken()) return
     loadAnalytics()
-  }, [loadAnalytics])
+  }, [hasAuthToken])
 
   const sourceData = useMemo(() => {
     if (!metrics) return []

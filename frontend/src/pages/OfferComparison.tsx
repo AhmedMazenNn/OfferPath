@@ -26,7 +26,13 @@ export function OfferComparison() {
   const [expandedPros, setExpandedPros] = useState<Record<string, boolean>>({})
   const [expandedCons, setExpandedCons] = useState<Record<string, boolean>>({})
 
+  const hasAuthToken = () => !!localStorage.getItem('offerpath_token')
+
   const loadOffers = async () => {
+    if (!hasAuthToken()) {
+      setLoading(false)
+      return
+    }
     try {
       setLoading(true)
       const data = await offersApi.list()
@@ -39,8 +45,9 @@ export function OfferComparison() {
   }
 
   useEffect(() => {
+    if (!hasAuthToken()) return
     loadOffers()
-  }, [loadOffers])
+  }, [])
 
   const handleUpdateOffer = async (id: string, updates: Partial<Offer>) => {
     const updated = await offersApi.update(id, updates)
