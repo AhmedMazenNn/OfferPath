@@ -31,7 +31,10 @@ if not DATABASE_URL:
     password_part = f":{DB_PASSWORD}" if DB_PASSWORD else ""
     DATABASE_URL = f"postgresql://{DB_USER}{password_part}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
-print(f"Connecting to database: {DB_HOST}:{DB_PORT}/{DB_NAME}")
+if DATABASE_URL:
+    print("Connecting to database via DATABASE_URL")
+else:
+    print(f"Connecting to database: {DB_HOST}:{DB_PORT}/{DB_NAME}")
 
 # Create the database engine
 engine = create_engine(DATABASE_URL)
