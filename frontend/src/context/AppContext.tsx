@@ -22,8 +22,8 @@ const AppContext = createContext<AppContextType | undefined>(undefined)
 // Helper to sync auth state with Chrome extension
 const syncWithExtension = (token: string | null, user: User | null) => {
   // Check if we're in a Chrome extension context
-  if (typeof window !== 'undefined' && (window as any).chrome?.storage) {
-    const chrome = (window as any).chrome;
+  if (typeof window !== 'undefined' && (window as unknown as { chrome?: { storage?: { local?: { set: (items: Record<string, unknown>) => void; remove: (keys: string[]) => void } } } }).chrome?.storage) {
+    const chrome = window as unknown as { chrome?: { storage?: { local?: { set: (items: Record<string, unknown>) => void; remove: (keys: string[]) => void } } } }
     if (token && user) {
       chrome.storage.local.set({
         authToken: token,
@@ -48,16 +48,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [applications, setApplications] = React.useState<Application[]>([])
   const [applicationsLoading, setApplicationsLoading] = React.useState(true)
 
-  // Load applications when user is authenticated
-  useEffect(() => {
-    if (user) {
-      loadApplications()
-    } else {
-      setApplications([])
-      setApplicationsLoading(false)
-    }
-  }, [user])
-
   const loadApplications = async () => {
     try {
       setApplicationsLoading(true)
@@ -69,6 +59,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setApplicationsLoading(false)
     }
   }
+
+  // Load applications when user is authenticated
+  useEffect(() => {
+    if (user) {
+      loadApplications()
+    } else {
+      setApplications([])
+      setApplicationsLoading(false)
+    }
+  }, [user])
 
   const login = async (email: string, password: string) => {
     try {

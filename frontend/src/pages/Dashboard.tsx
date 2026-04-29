@@ -28,14 +28,9 @@ import { analyticsApi, interviewsApi } from '../services/api'
 
 export function Dashboard({ onQuickLog }: { onQuickLog?: () => void }) {
   const { applications, applicationsLoading, user } = useAppContext()
-  const [stats, setStats] = useState<any>(null)
-  const [upcomingInterviews, setUpcomingInterviews] = useState<any[]>([])
-  const [trends, setTrends] = useState<any>(null)
-
-  useEffect(() => {
-    loadAnalytics()
-    loadUpcomingInterviews()
-  }, [])
+  const [stats, setStats] = useState<Record<string, unknown> | null>(null)
+  const [upcomingInterviews, setUpcomingInterviews] = useState<Record<string, unknown>[]>([])
+  const [trends, setTrends] = useState<Record<string, unknown> | null>(null)
 
   const loadAnalytics = async () => {
     try {
@@ -59,6 +54,11 @@ export function Dashboard({ onQuickLog }: { onQuickLog?: () => void }) {
       console.error('Failed to load interviews:', error)
     }
   }
+
+  useEffect(() => {
+    loadAnalytics()
+    loadUpcomingInterviews()
+  }, [loadAnalytics, loadUpcomingInterviews])
 
   const statusGroups = useMemo(() => {
     const groups: Record<string, Application[]> = {}
@@ -94,7 +94,7 @@ export function Dashboard({ onQuickLog }: { onQuickLog?: () => void }) {
 
   const timelineData = useMemo(() => {
     if (!trends) return []
-    return trends.daily_trend?.map((item: any) => ({
+    return trends.daily_trend?.map((item: { date: string; count: number }) => ({
       date: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       applications: item.count,
     })) || []

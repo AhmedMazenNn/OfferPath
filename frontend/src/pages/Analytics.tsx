@@ -19,14 +19,10 @@ import { analyticsApi } from '../services/api'
 import { StatsCard } from '../components/ui/StatsCard'
 
 export function Analytics() {
-  const [metrics, setMetrics] = useState<any>(null)
-  const [funnel, setFunnel] = useState<any>(null)
-  const [trends, setTrends] = useState<any>(null)
+  const [metrics, setMetrics] = useState<Record<string, unknown> | null>(null)
+  const [funnel, setFunnel] = useState<Record<string, unknown> | null>(null)
+  const [trends, setTrends] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    loadAnalytics()
-  }, [])
 
   const loadAnalytics = async () => {
     try {
@@ -46,6 +42,10 @@ export function Analytics() {
     }
   }
 
+  useEffect(() => {
+    loadAnalytics()
+  }, [loadAnalytics])
+
   const sourceData = useMemo(() => {
     if (!metrics) return []
     return Object.entries(metrics.applications_by_status || {}).map(([name, value]) => ({ name, value }))
@@ -64,7 +64,7 @@ export function Analytics() {
   const timelineData = useMemo(() => {
     if (!trends?.daily_trend) return []
     let cumulative = 0
-    return trends.daily_trend.map((item: any) => {
+    return trends.daily_trend.map((item: { date: string; count: number }) => {
       cumulative += item.count
       return {
         date: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),

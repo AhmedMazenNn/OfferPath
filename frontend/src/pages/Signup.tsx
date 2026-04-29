@@ -42,8 +42,8 @@ export function Signup() {
 
     try {
       await signup(email, name || email.split('@')[0], password)
-    } catch (err: any) {
-      setError(err.message || 'Initialization failed.')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Initialization failed.')
     } finally {
       setLoading(false)
     }

@@ -28,10 +28,6 @@ export function AdminPanel() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newUser, setNewUser] = useState({ name: '', email: '', password: '', isAdmin: false })
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
   const loadData = async () => {
     setLoading(true)
     setError(null)
@@ -42,8 +38,8 @@ export function AdminPanel() {
       ])
       setUsers(usersData)
       setStats(statsData)
-    } catch (err: any) {
-      setError(err.message || 'Failed to load admin data')
+} catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load admin data')
     } finally {
       setLoading(false)
     }
@@ -64,8 +60,8 @@ export function AdminPanel() {
       setShowCreateModal(false)
       setNewUser({ name: '', email: '', password: '', isAdmin: false })
       loadData()
-    } catch (err: any) {
-      alert(err.message || 'Failed to create user')
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Failed to create user')
     }
   }
 
@@ -75,8 +71,8 @@ export function AdminPanel() {
         method: 'PUT',
       })
       loadData()
-    } catch (err: any) {
-      alert(err.message || 'Failed to update user')
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Failed to update user')
     }
   }
 
@@ -85,8 +81,8 @@ export function AdminPanel() {
     try {
       await api.fetchWithAuth(`/admin/users/${userId}`, { method: 'DELETE' })
       loadData()
-    } catch (err: any) {
-      alert(err.message || 'Failed to delete user')
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Failed to delete user')
     }
   }
 

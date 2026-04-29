@@ -28,8 +28,8 @@ export function Login() {
 
     try {
       await login(email, password)
-    } catch (err: any) {
-      setError(err.message || 'Signature verification failed.')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Signature verification failed.')
     } finally {
       setLoading(false)
     }

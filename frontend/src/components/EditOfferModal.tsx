@@ -26,9 +26,24 @@ export function EditOfferModal({
   offer,
   onUpdate,
 }: EditOfferModalProps) {
-  const [formData, setFormData] = useState<Partial<Offer>>({})
-  const [pros, setPros] = useState<string[]>([])
-  const [cons, setCons] = useState<string[]>([])
+  const [formData, setFormData] = useState<Partial<Offer>>(() => {
+    if (offer) {
+      return {
+        baseSalary: offer.baseSalary,
+        currency: offer.currency,
+        bonus: offer.bonus,
+        equity: offer.equity,
+        benefits: offer.benefits || [],
+        startDate: offer.startDate,
+        deadline: offer.deadline,
+        status: offer.status,
+        notes: offer.notes,
+      }
+    }
+    return {}
+  })
+  const [pros, setPros] = useState<string[]>(() => offer?.pros || [])
+  const [cons, setCons] = useState<string[]>(() => offer?.cons || [])
   const [newPro, setNewPro] = useState('')
   const [newCon, setNewCon] = useState('')
   const [saving, setSaving] = useState(false)

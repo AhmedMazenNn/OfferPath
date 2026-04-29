@@ -19,12 +19,12 @@ export function Settings() {
   const { user, isAuthenticated, updateProfile } = useAppContext()
   const navigate = useNavigate()
   
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
+  const [name, setName] = useState(() => user?.name || '')
+  const [email, setEmail] = useState(() => user?.email || '')
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [avatar, setAvatar] = useState<string | null>(null)
+  const [avatar, setAvatar] = useState<string | null>(() => user?.avatar || null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -35,13 +35,7 @@ export function Settings() {
       navigate('/login', { replace: true })
       return
     }
-    
-    if (user) {
-      setName(user.name || '')
-      setEmail(user.email || '')
-      setAvatar(user.avatar || null)
-    }
-  }, [isAuthenticated, user, navigate])
+  }, [isAuthenticated, navigate])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -71,8 +65,8 @@ export function Settings() {
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
-    } catch (err: any) {
-      setError(err.message || 'Synchronization failed')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Synchronization failed')
     } finally {
       setLoading(false)
     }

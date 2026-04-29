@@ -26,10 +26,6 @@ export function OfferComparison() {
   const [expandedPros, setExpandedPros] = useState<Record<string, boolean>>({})
   const [expandedCons, setExpandedCons] = useState<Record<string, boolean>>({})
 
-  useEffect(() => {
-    loadOffers()
-  }, [])
-
   const loadOffers = async () => {
     try {
       setLoading(true)
@@ -41,6 +37,10 @@ export function OfferComparison() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    loadOffers()
+  }, [loadOffers])
 
   const handleUpdateOffer = async (id: string, updates: Partial<Offer>) => {
     const updated = await offersApi.update(id, updates)

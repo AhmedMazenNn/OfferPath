@@ -66,6 +66,7 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
 // Transform Functions (Backend <-> Frontend)
 // ============================================
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function transformApplicationFromBackend(backendApp: any): Application {
   // Parse custom_stages from comma-separated string to array
   let customStages: string[] = DEFAULT_STAGES;
@@ -111,6 +112,7 @@ function transformApplicationFromBackend(backendApp: any): Application {
 }
 
 function transformApplicationToBackend(app: Partial<Application>) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const backend: any = {}
   
   if (app.company !== undefined) backend.company = app.company
@@ -186,6 +188,7 @@ export const interviewsApi = {
     
     const queryString = query.toString()
     const data = await fetchWithAuth(`/interviews${queryString ? '?' + queryString : ''}`)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return data.map((item: any) => ({
       id: String(item.id),
       applicationId: String(item.application_id),
@@ -207,6 +210,7 @@ export const interviewsApi = {
   
   getUpcoming: async (days: number = 30): Promise<Interview[]> => {
     const data = await fetchWithAuth(`/interviews/upcoming?days=${days}`)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return data.map((item: any) => ({
       id: String(item.id),
       applicationId: String(item.application_id),
@@ -227,6 +231,7 @@ export const interviewsApi = {
   },
   
   get: async (id: string): Promise<Interview> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const item = await fetchWithAuth(`/interviews/${id}`)
     return {
       id: String(item.id),
@@ -285,6 +290,7 @@ export const interviewsApi = {
   },
   
   update: async (id: string, updates: Partial<Interview>): Promise<Interview> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const backendData: any = {}
     if (updates.interviewType !== undefined) backendData.interview_type = updates.interviewType
     if (updates.scheduledDate !== undefined) backendData.scheduled_date = updates.scheduledDate
@@ -330,6 +336,7 @@ export const offersApi = {
   /** Fetch real offers for a specific application (uses /offers endpoint directly) */
   listByApplication: async (applicationId: string): Promise<Offer[]> => {
     const data = await fetchWithAuth(`/offers?application_id=${applicationId}`)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return data.map((item: any) => {
       const parse = (v: any): string[] => {
         if (!v) return []
@@ -365,6 +372,7 @@ export const offersApi = {
     
     const queryString = query.toString()
     const data = await fetchWithAuth(`/offers/from-applications${queryString ? '?' + queryString : ''}`)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return data.map((item: any) => {
       // Parse benefits from string to array
       let benefits: string[] = []
@@ -439,6 +447,7 @@ export const offersApi = {
     offerIds.forEach(id => query.append('offer_ids', id))
     
     const data = await fetchWithAuth(`/offers/compare?${query.toString()}`)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return data.map((item: any) => {
       // Parse benefits from string to array
       let benefits: string[] = []
@@ -507,6 +516,7 @@ export const offersApi = {
   },
   
   get: async (id: string): Promise<Offer> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const item = await fetchWithAuth(`/offers/${id}`)
     // Parse pros and cons
     let pros: string[] = []
@@ -569,6 +579,7 @@ export const offersApi = {
       notes: offer.notes,
     }
     
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const item = await fetchWithAuth('/offers', {
       method: 'POST',
       body: JSON.stringify(backendData),
@@ -621,6 +632,7 @@ export const offersApi = {
   },
   
   update: async (id: string, updates: Partial<Offer>): Promise<Offer> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const backendData: any = {}
     if (updates.baseSalary !== undefined) backendData.base_salary = updates.baseSalary
     if (updates.currency !== undefined) backendData.currency = updates.currency
@@ -713,6 +725,7 @@ export const analyticsApi = {
 // ============================================
 
 export const authApi = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   login: async (email: string, password: string): Promise<{ user: any; token: string }> => {
     const data = await fetchWithAuth('/auth/login', {
       method: 'POST',
@@ -721,6 +734,7 @@ export const authApi = {
     return data
   },
   
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   signup: async (email: string, name: string, password: string): Promise<{ user: any; token: string }> => {
     const data = await fetchWithAuth('/auth/signup', {
       method: 'POST',

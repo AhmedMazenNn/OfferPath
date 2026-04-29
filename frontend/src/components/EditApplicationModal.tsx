@@ -31,7 +31,10 @@ export function EditApplicationModal({
   const { updateApplication } = useAppContext()
   
   const [formData, setFormData] = useState<Partial<Application>>({})
-  const [customStages, setCustomStages] = useState<string[]>([])
+  const [customStages, setCustomStages] = useState<string[]>(() => {
+    if (application?.customStages) return application.customStages
+    return []
+  })
   const [newStageName, setNewStageName] = useState('')
 
   // Related records
@@ -39,21 +42,6 @@ export function EditApplicationModal({
   const [offers, setOffers] = useState<Offer[]>([])
   const [isDeleting, setIsDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<{ type: 'interview' | 'offer'; id: string; label: string } | null>(null)
-
-  useEffect(() => {
-    if (isOpen && application) {
-      setFormData({
-        company: application.company,
-        role: application.role,
-        jobUrl: application.jobUrl || '',
-        source: application.source,
-        notes: application.notes || '',
-        currentStageIndex: application.currentStageIndex || 0,
-      })
-      setCustomStages(application.customStages || [])
-      loadRelated(application.id)
-    }
-  }, [isOpen, application])
 
   const loadRelated = async (appId: string) => {
     try {
@@ -69,6 +57,21 @@ export function EditApplicationModal({
       console.error('Failed to load offers', err)
     }
   }
+
+  useEffect(() => {
+    if (isOpen && application) {
+      setFormData({
+        company: application.company,
+        role: application.role,
+        jobUrl: application.jobUrl || '',
+        source: application.source,
+        notes: application.notes || '',
+        currentStageIndex: application.currentStageIndex || 0,
+      })
+      setCustomStages(application.customStages || [])
+      loadRelated(application.id)
+    }
+  }, [isOpen, application, loadRelated])
 
   const handleDeleteInterview = async (id: string) => {
     setIsDeleting(true)
@@ -504,7 +507,7 @@ export function EditApplicationModal({
   )
 }
 
-function SaveIcon(props: any) {
+function SaveIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg 
       {...props}
