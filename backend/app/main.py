@@ -88,7 +88,7 @@ app.include_router(interviews.router, prefix="/api/interviews")
 app.include_router(offers.router, prefix="/api/offers")
 app.include_router(analytics.router, prefix="/api/analytics")
 app.include_router(auth.router, prefix="/api/auth")
-app.include_router(admin.router, prefix="/api/admin")
+app.include_router(admin.router)
 
 
 # ============================================
