@@ -21,7 +21,7 @@ from dotenv import load_dotenv
 env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env")
 load_dotenv(env_path)
 
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*,https://offer-path-weld.vercel.app").split(",")
 
 from app.routes import applications, interviews, offers, analytics, auth, admin
 from app.database import engine
