@@ -142,14 +142,19 @@ async function extractFromActiveTab(sendResponse) {
       return;
     }
     
-    // First try content script
+    // Inject the content script on demand (required for Fast Approval with activeTab)
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ['content.js']
+    });
+
+    // Now call the extraction function
     chrome.tabs.sendMessage(tab.id, { action: 'extractJobData' }, (response) => {
       console.log('OfferPath: Content response:', response);
       if (chrome.runtime.lastError) {
         console.log('OfferPath: Runtime error:', chrome.runtime.lastError.message);
       } else if (response?.title && response.title !== 'Unknown') {
         sendResponse(response);
-        return;
       }
     });
     

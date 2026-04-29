@@ -10,8 +10,7 @@
     "tabs"
   ],
   "host_permissions": [
-    "https://ahmedmazen-offerpath.hf.space/*",
-    "https://*/*"
+    "https://ahmedmazen-offerpath.hf.space/*"
   ],
   "icons": {
     "16": "icons/icon16.png",
@@ -28,12 +27,5 @@
   },
   "background": {
     "service_worker": "background.js"
-  },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
-      "run_at": "document_idle"
-    }
-  ]
+  }
 }
