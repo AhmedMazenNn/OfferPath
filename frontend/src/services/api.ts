@@ -27,7 +27,9 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
     (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
   }
   
-  const response = await fetch(`${API_URL}/api${endpoint}`, {
+  const url = endpoint.endsWith('/') ? `${API_URL}/api${endpoint}` : `${API_URL}/api${endpoint}/`
+  
+  const response = await fetch(url, {
     ...options,
     headers,
   })
