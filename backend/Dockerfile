@@ -4,11 +4,11 @@ WORKDIR /app
 
 RUN useradd -m -u 1000 user
 
-COPY backend/requirements.txt .
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY --chown=user backend/app ./app
-COPY --chown=user backend/run.py .
+COPY --chown=user app ./app
+COPY --chown=user run.py .
 
 EXPOSE 7860
 
