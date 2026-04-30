@@ -14,7 +14,7 @@ Whether you're applying directly through company websites or tracking progress f
 
 Log your job applications effortlessly while browsing the web!
 
-🔗 **[Get the OfferPath Chrome Extension here](#)** *([Update with actual Chrome Web Store link once published](https://chromewebstore.google.com/detail/aghiahnclkjpcmdiebhpajhhbelndcmg?utm_source=item-share-cb))*
+🔗 **[Get the OfferPath Chrome Extension here](https://chromewebstore.google.com/detail/aghiahnclkjpcmdiebhpajhhbelndcmg?utm_source=item-share-cb)**
 
 ![Extension Screenshot](./images/OfferPath_pics.png)
 
