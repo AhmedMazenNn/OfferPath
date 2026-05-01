@@ -46,6 +46,7 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
   const url = `${API_URL}/api${cleanEndpoint}`
   
   const response = await fetch(url, {
+    cache: 'no-store', // Prevent caching which can leak data between users
     ...options,
     headers,
   })
