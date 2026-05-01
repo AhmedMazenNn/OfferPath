@@ -33,10 +33,13 @@ def list_offers(
     status: Optional[str] = Query(None, description="Filter by status"),
     application_id: Optional[int] = Query(None, description="Filter by application ID"),
     status_filter: Optional[str] = Query(None, description="Alternative filter by status"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """List all offers with optional filters. Also includes applications with 'offer' status."""
-    query = db.query(Offer)
+    query = db.query(Offer).join(Application, Offer.application_id == Application.id).filter(
+        Application.user_id == current_user.id
+    )
     
     filter_status = status or status_filter
     
@@ -68,7 +71,10 @@ def list_offers(
             "application_role": None
         }
         
-        application = db.query(Application).filter(Application.id == offer.application_id).first()
+        application = db.query(Application).filter(
+            Application.id == offer.application_id,
+            Application.user_id == current_user.id
+        ).first()
         if application:
             offer_dict["application_company"] = application.company
             offer_dict["application_role"] = application.role
@@ -84,11 +90,14 @@ def get_offers_from_applications(
     current_user: User = Depends(get_current_user)
 ):
     """Get all offers, including virtual offers from applications with 'offer' status."""
-    existing_offers = db.query(Offer).all()
+    existing_offers = db.query(Offer).join(Application, Offer.application_id == Application.id).filter(
+        Application.user_id == current_user.id
+    ).all()
     offer_ids = {o.application_id for o in existing_offers}
     
     applications_with_offers = db.query(Application).filter(
-        Application.status == 'offer'
+        Application.status == 'offer',
+        Application.user_id == current_user.id
     ).all()
     
     result = []
@@ -118,7 +127,10 @@ def get_offers_from_applications(
         })
     
     for offer in existing_offers:
-        app = db.query(Application).filter(Application.id == offer.application_id).first()
+        app = db.query(Application).filter(
+            Application.id == offer.application_id,
+            Application.user_id == current_user.id
+        ).first()
         result.append({
             "id": offer.id,
             "application_id": offer.application_id,
@@ -145,13 +157,17 @@ def get_offers_from_applications(
 @router.get("/compare", response_model=list[OfferResponse])
 def compare_offers(
     offer_ids: List[int] = Query(..., description="List of offer IDs to compare"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Compare multiple offers side-by-side."""
     if len(offer_ids) < 2:
         raise HTTPException(status_code=400, detail="At least 2 offer IDs required for comparison")
     
-    offers = db.query(Offer).filter(Offer.id.in_(offer_ids)).all()
+    offers = db.query(Offer).join(Application, Offer.application_id == Application.id).filter(
+        Offer.id.in_(offer_ids),
+        Application.user_id == current_user.id
+    ).all()
     
     if len(offers) != len(offer_ids):
         raise HTTPException(status_code=404, detail="One or more offers not found")
@@ -177,7 +193,10 @@ def compare_offers(
             "application_role": None
         }
         
-        application = db.query(Application).filter(Application.id == offer.application_id).first()
+        application = db.query(Application).filter(
+            Application.id == offer.application_id,
+            Application.user_id == current_user.id
+        ).first()
         if application:
             offer_dict["application_company"] = application.company
             offer_dict["application_role"] = application.role
@@ -188,9 +207,16 @@ def compare_offers(
 
 
 @router.get("/{offer_id}", response_model=OfferResponse)
-def get_offer(offer_id: int, db: Session = Depends(get_db)):
+def get_offer(
+    offer_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Get a single offer by ID."""
-    offer = db.query(Offer).filter(Offer.id == offer_id).first()
+    offer = db.query(Offer).join(Application, Offer.application_id == Application.id).filter(
+        Offer.id == offer_id,
+        Application.user_id == current_user.id
+    ).first()
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
     
@@ -213,7 +239,10 @@ def get_offer(offer_id: int, db: Session = Depends(get_db)):
         "application_role": None
     }
     
-    application = db.query(Application).filter(Application.id == offer.application_id).first()
+    application = db.query(Application).filter(
+        Application.id == offer.application_id,
+        Application.user_id == current_user.id
+    ).first()
     if application:
         result["application_company"] = application.company
         result["application_role"] = application.role
@@ -222,9 +251,16 @@ def get_offer(offer_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("", response_model=OfferResponse, status_code=201)
-def create_offer(offer: OfferCreate, db: Session = Depends(get_db)):
+def create_offer(
+    offer: OfferCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Create a new job offer."""
-    application = db.query(Application).filter(Application.id == offer.application_id).first()
+    application = db.query(Application).filter(
+        Application.id == offer.application_id,
+        Application.user_id == current_user.id
+    ).first()
     if not application:
         raise HTTPException(status_code=404, detail="Application not found")
     
@@ -275,9 +311,17 @@ def create_offer(offer: OfferCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/{offer_id}", response_model=OfferResponse)
-def update_offer(offer_id: int, offer_update: OfferUpdate, db: Session = Depends(get_db)):
+def update_offer(
+    offer_id: int,
+    offer_update: OfferUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Update an offer."""
-    db_offer = db.query(Offer).filter(Offer.id == offer_id).first()
+    db_offer = db.query(Offer).join(Application, Offer.application_id == Application.id).filter(
+        Offer.id == offer_id,
+        Application.user_id == current_user.id
+    ).first()
     if not db_offer:
         raise HTTPException(status_code=404, detail="Offer not found")
     
@@ -299,7 +343,10 @@ def update_offer(offer_id: int, offer_update: OfferUpdate, db: Session = Depends
     db.commit()
     db.refresh(db_offer)
     
-    application = db.query(Application).filter(Application.id == db_offer.application_id).first()
+    application = db.query(Application).filter(
+        Application.id == db_offer.application_id,
+        Application.user_id == current_user.id
+    ).first()
     benefits_list = db_offer.benefits.split(",") if db_offer.benefits and db_offer.benefits != "[]" else []
     pros_list = db_offer.pros.split(",") if db_offer.pros and db_offer.pros != "[]" else []
     cons_list = db_offer.cons.split(",") if db_offer.cons and db_offer.cons != "[]" else []
@@ -325,9 +372,16 @@ def update_offer(offer_id: int, offer_update: OfferUpdate, db: Session = Depends
 
 
 @router.delete("/{offer_id}")
-def delete_offer(offer_id: int, db: Session = Depends(get_db)):
+def delete_offer(
+    offer_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Delete an offer."""
-    db_offer = db.query(Offer).filter(Offer.id == offer_id).first()
+    db_offer = db.query(Offer).join(Application, Offer.application_id == Application.id).filter(
+        Offer.id == offer_id,
+        Application.user_id == current_user.id
+    ).first()
     if not db_offer:
         raise HTTPException(status_code=404, detail="Offer not found")
     

@@ -21,7 +21,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
 from app.database import get_db
-from app.models import Interview, InterviewCreate, InterviewUpdate, InterviewResponse, Application
+from app.models import Interview, InterviewCreate, InterviewUpdate, InterviewResponse, Application, User
+from app.routes.auth import get_current_user
 
 router = APIRouter(tags=["interviews"])
 
@@ -32,10 +33,13 @@ def list_interviews(
     limit: int = Query(default=100, le=500),
     status: Optional[str] = Query(None, description="Filter by status"),
     application_id: Optional[int] = Query(None, description="Filter by application ID"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """List all interviews with optional filters."""
-    query = db.query(Interview)
+    query = db.query(Interview).join(Application, Interview.application_id == Application.id).filter(
+        Application.user_id == current_user.id
+    )
     
     if status:
         query = query.filter(Interview.status == status)
@@ -62,7 +66,10 @@ def list_interviews(
             "application_role": None
         }
         
-        application = db.query(Application).filter(Application.id == interview.application_id).first()
+        application = db.query(Application).filter(
+            Application.id == interview.application_id,
+            Application.user_id == current_user.id
+        ).first()
         if application:
             interview_dict["application_company"] = application.company
             interview_dict["application_role"] = application.role
@@ -75,14 +82,18 @@ def list_interviews(
 @router.get("/upcoming", response_model=list[InterviewResponse])
 def get_upcoming_interviews(
     days: int = Query(default=30, ge=1, description="Number of days to look ahead"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Get upcoming interviews within specified days."""
     from datetime import timedelta
     now = datetime.now()
     future = now + timedelta(days=days)
     
-    interviews = db.query(Interview).filter(
+    interviews = db.query(Interview).join(
+        Application, Interview.application_id == Application.id
+    ).filter(
+        Application.user_id == current_user.id,
         Interview.scheduled_date >= now,
         Interview.scheduled_date <= future,
         Interview.status == "scheduled"
@@ -108,7 +119,10 @@ def get_upcoming_interviews(
             "application_role": None
         }
         
-        application = db.query(Application).filter(Application.id == interview.application_id).first()
+        application = db.query(Application).filter(
+            Application.id == interview.application_id,
+            Application.user_id == current_user.id
+        ).first()
         if application:
             interview_dict["application_company"] = application.company
             interview_dict["application_role"] = application.role
@@ -119,9 +133,18 @@ def get_upcoming_interviews(
 
 
 @router.get("/{interview_id}", response_model=InterviewResponse)
-def get_interview(interview_id: int, db: Session = Depends(get_db)):
+def get_interview(
+    interview_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Get a single interview by ID."""
-    interview = db.query(Interview).filter(Interview.id == interview_id).first()
+    interview = db.query(Interview).join(
+        Application, Interview.application_id == Application.id
+    ).filter(
+        Interview.id == interview_id,
+        Application.user_id == current_user.id
+    ).first()
     if not interview:
         raise HTTPException(status_code=404, detail="Interview not found")
     
@@ -143,7 +166,10 @@ def get_interview(interview_id: int, db: Session = Depends(get_db)):
         "application_role": None
     }
     
-    application = db.query(Application).filter(Application.id == interview.application_id).first()
+    application = db.query(Application).filter(
+        Application.id == interview.application_id,
+        Application.user_id == current_user.id
+    ).first()
     if application:
         result["application_company"] = application.company
         result["application_role"] = application.role
@@ -152,9 +178,16 @@ def get_interview(interview_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("", response_model=InterviewResponse, status_code=201)
-def create_interview(interview: InterviewCreate, db: Session = Depends(get_db)):
+def create_interview(
+    interview: InterviewCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Schedule a new interview."""
-    application = db.query(Application).filter(Application.id == interview.application_id).first()
+    application = db.query(Application).filter(
+        Application.id == interview.application_id,
+        Application.user_id == current_user.id
+    ).first()
     if not application:
         raise HTTPException(status_code=404, detail="Application not found")
     
@@ -201,9 +234,19 @@ def create_interview(interview: InterviewCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/{interview_id}", response_model=InterviewResponse)
-def update_interview(interview_id: int, interview_update: InterviewUpdate, db: Session = Depends(get_db)):
+def update_interview(
+    interview_id: int,
+    interview_update: InterviewUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Update an interview."""
-    db_interview = db.query(Interview).filter(Interview.id == interview_id).first()
+    db_interview = db.query(Interview).join(
+        Application, Interview.application_id == Application.id
+    ).filter(
+        Interview.id == interview_id,
+        Application.user_id == current_user.id
+    ).first()
     if not db_interview:
         raise HTTPException(status_code=404, detail="Interview not found")
     
@@ -219,7 +262,10 @@ def update_interview(interview_id: int, interview_update: InterviewUpdate, db: S
     db.commit()
     db.refresh(db_interview)
     
-    application = db.query(Application).filter(Application.id == db_interview.application_id).first()
+    application = db.query(Application).filter(
+        Application.id == db_interview.application_id,
+        Application.user_id == current_user.id
+    ).first()
     
     return {
         "id": db_interview.id,
@@ -239,9 +285,18 @@ def update_interview(interview_id: int, interview_update: InterviewUpdate, db: S
 
 
 @router.delete("/{interview_id}")
-def delete_interview(interview_id: int, db: Session = Depends(get_db)):
+def delete_interview(
+    interview_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Cancel/delete an interview."""
-    db_interview = db.query(Interview).filter(Interview.id == interview_id).first()
+    db_interview = db.query(Interview).join(
+        Application, Interview.application_id == Application.id
+    ).filter(
+        Interview.id == interview_id,
+        Application.user_id == current_user.id
+    ).first()
     if not db_interview:
         raise HTTPException(status_code=404, detail="Interview not found")
     
