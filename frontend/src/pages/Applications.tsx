@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, Trash2, Edit2, CalendarPlus, Filter, Briefcase, ChevronRight } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { Search, Trash2, Edit2, CalendarPlus, Filter, Briefcase, ChevronRight, ArrowUpDown, Calendar, X } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useAppContext } from '../context/AppContext'
 import { ScheduleInterviewModal } from '../components/ScheduleInterviewModal'
 import { StatusBadge } from '../components/ui/StatusBadge'
-import type { ApplicationSource, Application } from '../types'
+import type { ApplicationSource, Application, ApplicationStatus } from '../types'
+
+type SortOption = 'newest' | 'oldest' | 'company-az' | 'company-za' | 'title-az' | 'title-za' | 'status-asc' | 'status-desc'
 
 interface ApplicationsProps {
   onEdit: (app: Application) => void
@@ -13,20 +15,97 @@ interface ApplicationsProps {
 }
 
 export function Applications({ onEdit, onSelect }: ApplicationsProps) {
-  const { applications, applicationsLoading, deleteApplication } = useAppContext()
+  const { applications, applicationsLoading, deleteApplication, updateApplication } = useAppContext()
   const [searchQuery, setSearchQuery] = useState('')
   const [sourceFilter, setSourceFilter] = useState<ApplicationSource | 'all'>('all')
+  const [statusFilter, setStatusFilter] = useState<ApplicationStatus | 'all'>('all')
+  const [sortBy, setSortBy] = useState<SortOption>('newest')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [companyFilter, setCompanyFilter] = useState('')
+  const [editingDateId, setEditingDateId] = useState<string | null>(null)
   const [scheduleModalApp, setScheduleModalApp] = useState<Application | null>(null)
 
+  const statusOptions: { value: ApplicationStatus | 'all'; label: string }[] = [
+    { value: 'all', label: 'All Statuses' },
+    { value: 'applied', label: 'Applied' },
+    { value: 'screening', label: 'Screening' },
+    { value: 'interview', label: 'Interview' },
+    { value: 'offer', label: 'Offer' },
+    { value: 'rejected', label: 'Rejected' },
+  ]
+
+  const sortOptions: { value: SortOption; label: string }[] = [
+    { value: 'newest', label: 'Newest to Oldest' },
+    { value: 'oldest', label: 'Oldest to Newest' },
+    { value: 'company-az', label: 'Company (A–Z)' },
+    { value: 'company-za', label: 'Company (Z–A)' },
+    { value: 'title-az', label: 'Title (A–Z)' },
+    { value: 'title-za', label: 'Title (Z–A)' },
+    { value: 'status-asc', label: 'Status (A–Z)' },
+    { value: 'status-desc', label: 'Status (Z–A)' },
+  ]
+
+  const uniqueCompanies = useMemo(() => {
+    const companies = new Set(applications.map(app => app.company))
+    return Array.from(companies).sort()
+  }, [applications])
+
   const filteredApplications = useMemo(() => {
-    return applications.filter((app) => {
+    let result = applications.filter((app) => {
       const matchesSearch =
+        searchQuery === '' ||
         app.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
         app.role.toLowerCase().includes(searchQuery.toLowerCase())
       const matchesSource = sourceFilter === 'all' || app.source === sourceFilter
-      return matchesSearch && matchesSource
+      const matchesStatus = statusFilter === 'all' || app.status === statusFilter
+      const matchesDateFrom = !dateFrom || new Date(app.appliedDate) >= new Date(dateFrom)
+      const matchesDateTo = !dateTo || new Date(app.appliedDate) <= new Date(dateTo)
+      const matchesCompany = !companyFilter || app.company.toLowerCase().includes(companyFilter.toLowerCase())
+      return matchesSearch && matchesSource && matchesStatus && matchesDateFrom && matchesDateTo && matchesCompany
     })
-  }, [applications, searchQuery, sourceFilter])
+
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case 'newest':
+          return new Date(b.appliedDate).getTime() - new Date(a.appliedDate).getTime()
+        case 'oldest':
+          return new Date(a.appliedDate).getTime() - new Date(b.appliedDate).getTime()
+        case 'company-az':
+          return a.company.localeCompare(b.company)
+        case 'company-za':
+          return b.company.localeCompare(a.company)
+        case 'title-az':
+          return a.role.localeCompare(b.role)
+        case 'title-za':
+          return b.role.localeCompare(a.role)
+        case 'status-asc':
+          return (a.status || 'applied').localeCompare(b.status || 'applied')
+        case 'status-desc':
+          return (b.status || 'applied').localeCompare(a.status || 'applied')
+        default:
+          return 0
+      }
+    })
+
+    return result
+  }, [applications, searchQuery, sourceFilter, statusFilter, sortBy, dateFrom, dateTo, companyFilter])
+
+  const hasActiveFilters = searchQuery || sourceFilter !== 'all' || statusFilter !== 'all' || dateFrom || dateTo || companyFilter
+
+  const clearFilters = () => {
+    setSearchQuery('')
+    setSourceFilter('all')
+    setStatusFilter('all')
+    setDateFrom('')
+    setDateTo('')
+    setCompanyFilter('')
+  }
+
+  const handleDateEdit = async (id: string, newDate: string) => {
+    await updateApplication(id, { appliedDate: newDate })
+    setEditingDateId(null)
+  }
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.preventDefault()
@@ -67,42 +146,141 @@ export function Applications({ onEdit, onSelect }: ApplicationsProps) {
         </div>
       </div>
 
-      {/* Filter Bar */}
+      {/* Filter & Sort Bar */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="glass dark:bg-slate-900/50 p-2 rounded-2xl flex flex-col md:flex-row gap-2 border border-slate-200 dark:border-slate-800"
+        className="glass dark:bg-slate-900/50 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3"
       >
-        <div className="flex-1 relative group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary-500 transition-colors" />
-          <input
-            type="text"
-            placeholder="Search company or role..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-4 py-2.5 bg-slate-100/50 dark:bg-slate-800/50 border border-transparent focus:border-primary-500/30 rounded-xl text-sm transition-all outline-none"
-          />
+        {/* Primary Row: Search and Sort */}
+        <div className="flex flex-col md:flex-row gap-2">
+          <div className="flex-1 relative group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary-500 transition-colors" />
+            <input
+              type="text"
+              placeholder="Search company or role..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-11 pr-4 py-2.5 bg-slate-100/50 dark:bg-slate-800/50 border border-transparent focus:border-primary-500/30 rounded-xl text-sm transition-all outline-none"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 text-slate-400 px-2">
+              <ArrowUpDown className="w-4 h-4" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">Sort:</span>
+            </div>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortOption)}
+              className="bg-slate-100 dark:bg-slate-800 border-none rounded-xl px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-primary-500/20 min-w-[160px]"
+            >
+              {sortOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 px-2">
-          <div className="flex items-center gap-2 text-slate-400">
-            <Filter className="w-4 h-4" />
-            <span className="text-[10px] font-bold uppercase tracking-wider">Source:</span>
+        {/* Filter Row */}
+        <div className="flex flex-col md:flex-row gap-2">
+          {/* Source Filter */}
+          <div className="flex items-center gap-2 px-2">
+            <div className="flex items-center gap-2 text-slate-400">
+              <Filter className="w-4 h-4" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">Source:</span>
+            </div>
+            <select
+              value={sourceFilter}
+              onChange={(e) => setSourceFilter(e.target.value as ApplicationSource | 'all')}
+              className="bg-slate-100 dark:bg-slate-800 border-none rounded-xl px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-primary-500/20 min-w-[120px]"
+            >
+              <option value="all">All Sources</option>
+              <option value="LinkedIn Easy Apply">LinkedIn</option>
+              <option value="Company Site">Company Site</option>
+              <option value="Referral">Referral</option>
+              <option value="Job Board">Job Board</option>
+              <option value="Other">Other</option>
+            </select>
           </div>
-          <select
-            value={sourceFilter}
-            onChange={(e) => setSourceFilter(e.target.value as ApplicationSource | 'all')}
-            className="bg-slate-100 dark:bg-slate-800 border-none rounded-xl px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-primary-500/20 min-w-[140px]"
-          >
-            <option value="all">All Sources</option>
-            <option value="LinkedIn Easy Apply">LinkedIn</option>
-            <option value="Company Site">Company Site</option>
-            <option value="Referral">Referral</option>
-            <option value="Job Board">Job Board</option>
-            <option value="Other">Other</option>
-          </select>
+
+          {/* Status Filter */}
+          <div className="flex items-center gap-2 px-2">
+            <div className="flex items-center gap-2 text-slate-400">
+              <span className="text-[10px] font-bold uppercase tracking-wider">Status:</span>
+            </div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as ApplicationStatus | 'all')}
+              className="bg-slate-100 dark:bg-slate-800 border-none rounded-xl px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-primary-500/20 min-w-[120px]"
+            >
+              {statusOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Date Range Filter */}
+          <div className="flex items-center gap-2 px-2">
+            <div className="flex items-center gap-2 text-slate-400">
+              <Calendar className="w-4 h-4" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">Date:</span>
+            </div>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="bg-slate-100 dark:bg-slate-800 border-none rounded-xl px-2 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-primary-500/20 w-[110px]"
+            />
+            <span className="text-slate-400">-</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="bg-slate-100 dark:bg-slate-800 border-none rounded-xl px-2 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-primary-500/20 w-[110px]"
+            />
+          </div>
+
+          {/* Company Filter */}
+          <div className="flex items-center gap-2 px-2">
+            <div className="flex items-center gap-2 text-slate-400">
+              <span className="text-[10px] font-bold uppercase tracking-wider">Company:</span>
+            </div>
+            <select
+              value={companyFilter}
+              onChange={(e) => setCompanyFilter(e.target.value)}
+              className="bg-slate-100 dark:bg-slate-800 border-none rounded-xl px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-primary-500/20 min-w-[120px]"
+            >
+              <option value="">All Companies</option>
+              {uniqueCompanies.map((company) => (
+                <option key={company} value={company}>{company}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Clear Filters */}
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="flex items-center gap-1 px-3 py-2 text-xs font-bold text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all"
+            >
+              <X className="w-3 h-3" />
+              Clear
+            </button>
+          )}
         </div>
       </motion.div>
+
+      {/* Results Count */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-medium text-slate-500">
+          Showing <span className="text-primary-600 dark:text-primary-400 font-bold">{filteredApplications.length}</span> {filteredApplications.length === 1 ? 'application' : 'applications'}
+          {hasActiveFilters && <span className="text-slate-400"> (filtered)</span>}
+        </p>
+        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+          Sorted: {sortOptions.find(s => s.value === sortBy)?.label}
+        </span>
+      </div>
 
       {/* Applications Data Grid/Table */}
       <motion.div
@@ -117,7 +295,12 @@ export function Applications({ onEdit, onSelect }: ApplicationsProps) {
               <thead>
                 <tr className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800">
                   <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Company & Role</th>
-                  <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Applied</th>
+                  <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 cursor-pointer hover:text-primary-500 transition-colors" onClick={() => setSortBy(sortBy === 'newest' ? 'oldest' : 'newest')}>
+                    <div className="flex items-center gap-1">
+                      Applied
+                      <ArrowUpDown className="w-3 h-3" />
+                    </div>
+                  </th>
                   <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Source</th>
                   <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Status</th>
                   <th className="px-6 py-5 text-right text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Actions</th>
@@ -152,10 +335,48 @@ export function Applications({ onEdit, onSelect }: ApplicationsProps) {
                       </Link>
                     </td>
                     <td className="px-6 py-5">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300 tabular-nums">
-                          {new Date(app.appliedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </span>
+                      <div className="flex items-center gap-2">
+                        <AnimatePresence mode="wait">
+                          {editingDateId === app.id ? (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.9 }}
+                              className="flex items-center gap-1"
+                            >
+                              <input
+                                type="date"
+                                defaultValue={app.appliedDate.split('T')[0]}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    const target = e.target as HTMLInputElement
+                                    handleDateEdit(app.id, target.value)
+                                  }
+                                  if (e.key === 'Escape') {
+                                    setEditingDateId(null)
+                                  }
+                                }}
+                                onBlur={(e) => handleDateEdit(app.id, e.target.value)}
+                                autoFocus
+                                className="bg-slate-100 dark:bg-slate-800 border border-primary-500/30 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 dark:text-slate-300 outline-none w-[130px]"
+                              />
+                            </motion.div>
+                          ) : (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.9 }}
+                              className="flex items-center gap-2 cursor-pointer group/date"
+                              onClick={() => setEditingDateId(app.id)}
+                              title="Click to edit date"
+                            >
+                              <span className="text-sm font-bold text-slate-700 dark:text-slate-300 tabular-nums">
+                                {new Date(app.appliedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </span>
+                              <Edit2 className="w-3 h-3 text-slate-300 opacity-0 group-hover/date:opacity-100 transition-all hover:text-primary-500" />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     </td>
                     <td className="px-6 py-5">
@@ -221,9 +442,46 @@ export function Applications({ onEdit, onSelect }: ApplicationsProps) {
               <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
                 <div className="flex flex-col">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Applied On</span>
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    {new Date(app.appliedDate).toLocaleDateString()}
-                  </span>
+                  <AnimatePresence mode="wait">
+                    {editingDateId === app.id ? (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                      >
+                        <input
+                          type="date"
+                          defaultValue={app.appliedDate.split('T')[0]}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              const target = e.target as HTMLInputElement
+                              handleDateEdit(app.id, target.value)
+                            }
+                            if (e.key === 'Escape') {
+                              setEditingDateId(null)
+                            }
+                          }}
+                          onBlur={(e) => handleDateEdit(app.id, e.target.value)}
+                          autoFocus
+                          className="bg-slate-100 dark:bg-slate-800 border border-primary-500/30 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 dark:text-slate-300 outline-none"
+                        />
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        className="flex items-center gap-2 cursor-pointer"
+                        onClick={() => setEditingDateId(app.id)}
+                        title="Click to edit date"
+                      >
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                          {new Date(app.appliedDate).toLocaleDateString()}
+                        </span>
+                        <Edit2 className="w-3 h-3 text-slate-300 hover:text-primary-500" />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
                 
                 <div className="flex items-center gap-2">
