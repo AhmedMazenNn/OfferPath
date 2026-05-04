@@ -30,7 +30,7 @@ const API_URL = getApiUrl()
 // Helper Functions
 // ============================================
 
-async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
+async function fetchWithAuth(endpoint: string, options: RequestInit = {}, _retry = true) {
   const token = localStorage.getItem('offerpath_token')
   
   const headers: HeadersInit = {
@@ -46,10 +46,28 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
   const url = `${API_URL}/api${cleanEndpoint}`
   
   const response = await fetch(url, {
-    cache: 'no-store', // Prevent caching which can leak data between users
+    cache: 'no-store',
     ...options,
     headers,
   })
+  
+  if (response.status === 401 && _retry) {
+    try {
+      const refreshData = await fetch(`${API_URL}/api/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      if (refreshData.ok) {
+        const refreshResult = await refreshData.json()
+        if (refreshResult.token) {
+          localStorage.setItem('offerpath_token', refreshResult.token)
+          return fetchWithAuth(endpoint, options, false)
+        }
+      }
+    } catch (e) {
+      console.error('Token refresh failed:', e)
+    }
+  }
   
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: 'An error occurred' }))
@@ -728,26 +746,46 @@ export const analyticsApi = {
 export const authApi = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   login: async (email: string, password: string): Promise<{ user: any; token: string }> => {
-    const data = await fetchWithAuth('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    })
-    return data
+    let lastError: Error | null = null
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const data = await fetchWithAuth('/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ email, password }),
+        })
+        return data as { user: any; token: string }
+      } catch (e) {
+        lastError = e instanceof Error ? e : new Error('An error occurred')
+        if (lastError.message.includes('500') || lastError.message.includes('Internal Server Error')) {
+          await new Promise(r => setTimeout(r, 500 * (attempt + 1)))
+          continue
+        }
+        throw lastError
+      }
+    }
+    throw lastError
   },
-  
+   
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   signup: async (email: string, name: string, password: string): Promise<{ user: any; token: string }> => {
     const data = await fetchWithAuth('/auth/signup', {
       method: 'POST',
       body: JSON.stringify({ email, name, password }),
     })
-    return data
+    return data as { user: any; token: string }
   },
   
-  getMe: async () => {
+getMe: async () => {
     return fetchWithAuth('/auth/me')
   },
-  
+
+  refresh: async () => {
+    const data = await fetchWithAuth('/auth/refresh', {
+      method: 'POST',
+    })
+    return data
+  },
+
   updateProfile: async (updates: { name?: string; email?: string; avatar?: string; password?: string }) => {
     return fetchWithAuth('/auth/me', {
       method: 'PUT',
