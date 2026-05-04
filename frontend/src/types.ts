@@ -30,6 +30,7 @@ export interface Application {
   customStages?: string[]
   timeline?: TimelineEvent[]
   lastUpdated?: string
+  jobChangeDate?: string
 }
 
 export interface User {

@@ -52,6 +52,7 @@ export function EditApplicationModal({
         source: application.source,
         notes: application.notes || '',
         currentStageIndex: application.currentStageIndex || 0,
+        jobChangeDate: application.jobChangeDate || '',
       })
       setCustomStages(application.customStages || [])
       
@@ -245,34 +246,43 @@ export function EditApplicationModal({
                                   className="input-base"
                                 />
                              </div>
-                             <div className="grid grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Channel</label>
-                                   <select
-                                      value={formData.source || 'Other'}
-                                      onChange={(e) => handleChange('source', e.target.value as ApplicationSource)}
-                                      className="input-base appearance-none"
-                                   >
-                                      <option value="LinkedIn Easy Apply">LinkedIn Easy Apply</option>
-                                      <option value="Company Site">Company Site</option>
-                                      <option value="Referral">Referral</option>
-                                      <option value="Job Board">Job Board</option>
-                                      <option value="Other">Other</option>
-                                   </select>
-                                </div>
-                                <div className="space-y-2">
-                                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Digital Link</label>
-                                   <input
-                                      type="url"
-                                      value={formData.jobUrl || ''}
-                                      onChange={(e) => handleChange('jobUrl', e.target.value)}
-                                      className="input-base"
-                                      placeholder="https://..."
-                                   />
-                                </div>
-                             </div>
-                          </div>
-                       </section>
+<div className="grid grid-cols-3 gap-6">
+                                 <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Channel</label>
+                                    <select
+                                       value={formData.source || 'Other'}
+                                       onChange={(e) => handleChange('source', e.target.value as ApplicationSource)}
+                                       className="input-base appearance-none"
+                                    >
+                                       <option value="LinkedIn Easy Apply">LinkedIn Easy Apply</option>
+                                       <option value="Company Site">Company Site</option>
+                                       <option value="Referral">Referral</option>
+                                       <option value="Job Board">Job Board</option>
+                                       <option value="Other">Other</option>
+                                    </select>
+                                 </div>
+                                 <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Job Change Date</label>
+                                    <input
+                                       type="date"
+                                       value={formData.jobChangeDate || ''}
+                                       onChange={(e) => handleChange('jobChangeDate', e.target.value)}
+                                       className="input-base"
+                                    />
+                                 </div>
+                                 <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Digital Link</label>
+                                    <input
+                                       type="url"
+                                       value={formData.jobUrl || ''}
+                                       onChange={(e) => handleChange('jobUrl', e.target.value)}
+                                       className="input-base"
+                                       placeholder="https://..."
+                                    />
+                                 </div>
+                              </div>
+                           </div>
+                        </section>
 
                        <section>
                           <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
