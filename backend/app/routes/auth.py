@@ -204,3 +204,10 @@ def update_me(
 def logout():
     """Logout (client should discard token)."""
     return {"message": "Successfully logged out"}
+
+
+@router.post("/refresh")
+def refresh_token(current_user: User = Depends(get_current_user)):
+    """Refresh the access token."""
+    access_token = create_access_token(data={"sub": str(current_user.id), "email": current_user.email})
+    return {"token": access_token}
