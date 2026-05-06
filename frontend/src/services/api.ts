@@ -107,10 +107,10 @@ function transformApplicationFromBackend(backendApp: any): Application {
             return { name: s.name || '', color: s.color || '#3b82f6' };
           });
         } else {
-          customStages = backendApp.custom_stages.split(',').map((s: string) => ({ name: s.trim(), color: '#3b82f6' })).filter(s => s.name);
+          customStages = backendApp.custom_stages.split(',').map((s: string) => ({ name: s.trim(), color: '#3b82f6' })).filter((s: any) => s.name);
         }
       } catch {
-        customStages = backendApp.custom_stages.split(',').map((s: string) => ({ name: s.trim(), color: '#3b82f6' })).filter(s => s.name);
+        customStages = backendApp.custom_stages.split(',').map((s: string) => ({ name: s.trim(), color: '#3b82f6' })).filter((s: any) => s.name);
       }
     } else if (Array.isArray(backendApp.custom_stages)) {
       customStages = backendApp.custom_stages.map((s: any) => {
