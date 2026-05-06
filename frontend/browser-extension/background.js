@@ -67,7 +67,11 @@ async function saveApplication(jobData, sendResponse) {
       source: jobData.source || 'Company Site',
       applied_date: new Date().toISOString().split('T')[0],
       current_stage_index: 0,
-      custom_stages: ['Applied', 'Screening', 'Interview', 'Offer'],
+      custom_stages: [
+        { name: 'Applied', color: '#3b82f6' },
+        { name: 'Rejected', color: '#ef4444' },
+        { name: 'Offer', color: '#10b981' }
+      ],
     };
     
     const response = await fetch(`${API_BASE_URL}/applications`, {

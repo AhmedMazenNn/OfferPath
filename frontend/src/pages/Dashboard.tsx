@@ -467,7 +467,7 @@ export function Dashboard({ onQuickLog }: { onQuickLog?: () => void }) {
                   </div>
                   <div className="flex flex-col items-end gap-1.5">
                     <StatusBadge 
-                      status={app.status || 'applied'} 
+                      status={app.status || 'Applied'} 
                       color={app.customStages?.find(s => s.name === app.status)?.color || app.customStages?.[app.currentStageIndex || 0]?.color}
                     />
                     <span className="text-[10px] font-bold text-slate-400 uppercase">

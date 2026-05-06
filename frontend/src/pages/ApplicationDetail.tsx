@@ -80,7 +80,7 @@ export function ApplicationDetail({ onEdit }: ApplicationDetailProps) {
              <div className="flex items-center gap-3">
                <span className="text-lg font-bold text-slate-500 dark:text-slate-400">{app.role}</span>
                <StatusBadge 
-                 status={app.status || 'applied'} 
+                 status={app.status || 'Applied'} 
                  color={currentStageColor}
                />
              </div>

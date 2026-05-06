@@ -33,7 +33,7 @@ export function NewApplicationModal({
       jobUrl: formData.jobUrl,
       appliedDate: formData.appliedDate,
       source: formData.source,
-      status: 'applied',
+      status: 'Applied',
       currentStageIndex: 0,
       customStages: DEFAULT_STAGES,
       notes: formData.notes,

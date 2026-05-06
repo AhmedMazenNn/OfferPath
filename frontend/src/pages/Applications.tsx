@@ -26,14 +26,19 @@ export function Applications({ onEdit, onSelect }: ApplicationsProps) {
   const [editingDateId, setEditingDateId] = useState<string | null>(null)
   const [scheduleModalApp, setScheduleModalApp] = useState<Application | null>(null)
 
-  const statusOptions: { value: ApplicationStatus | 'all'; label: string }[] = [
-    { value: 'all', label: 'All Statuses' },
-    { value: 'applied', label: 'Applied' },
-    { value: 'screening', label: 'Screening' },
-    { value: 'interview', label: 'Interview' },
-    { value: 'offer', label: 'Offer' },
-    { value: 'rejected', label: 'Rejected' },
-  ]
+  const statusOptions = useMemo(() => {
+    const stages = new Set<string>(['Applied', 'Rejected', 'Offer'])
+    applications.forEach(app => {
+      if (app.customStages) {
+        app.customStages.forEach(s => stages.add(s.name))
+      }
+      if (app.status) stages.add(app.status)
+    })
+    return [
+      { value: 'all', label: 'All Statuses' },
+      ...Array.from(stages).map(s => ({ value: s.toLowerCase(), label: s }))
+    ]
+  }, [applications])
 
   const sortOptions: { value: SortOption; label: string }[] = [
     { value: 'newest', label: 'Newest to Oldest' },
@@ -58,7 +63,7 @@ export function Applications({ onEdit, onSelect }: ApplicationsProps) {
         app.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
         app.role.toLowerCase().includes(searchQuery.toLowerCase())
       const matchesSource = sourceFilter === 'all' || app.source === sourceFilter
-      const matchesStatus = statusFilter === 'all' || app.status === statusFilter
+      const matchesStatus = statusFilter === 'all' || (app.status || '').toLowerCase() === statusFilter.toLowerCase()
       const matchesDateFrom = !dateFrom || new Date(app.appliedDate) >= new Date(dateFrom)
       const matchesDateTo = !dateTo || new Date(app.appliedDate) <= new Date(dateTo)
       const matchesCompany = !companyFilter || app.company.toLowerCase().includes(companyFilter.toLowerCase())
@@ -80,9 +85,9 @@ export function Applications({ onEdit, onSelect }: ApplicationsProps) {
         case 'title-za':
           return b.role.localeCompare(a.role)
         case 'status-asc':
-          return (a.status || 'applied').localeCompare(b.status || 'applied')
+          return (a.status || 'Applied').localeCompare(b.status || 'Applied')
         case 'status-desc':
-          return (b.status || 'applied').localeCompare(a.status || 'applied')
+          return (b.status || 'Applied').localeCompare(a.status || 'Applied')
         default:
           return 0
       }
@@ -386,7 +391,7 @@ export function Applications({ onEdit, onSelect }: ApplicationsProps) {
                     </td>
                     <td className="px-6 py-5">
                       <StatusBadge 
-                        status={app.status || 'applied'} 
+                        status={app.status || 'Applied'} 
                         color={app.customStages?.find(s => s.name === app.status)?.color || app.customStages?.[app.currentStageIndex || 0]?.color}
                       />
                     </td>
@@ -440,7 +445,7 @@ export function Applications({ onEdit, onSelect }: ApplicationsProps) {
                   <p className="text-xs text-slate-500 truncate">{app.role}</p>
                 </div>
                 <StatusBadge 
-                  status={app.status || 'applied'} 
+                  status={app.status || 'Applied'} 
                   color={app.customStages?.find(s => s.name === app.status)?.color || app.customStages?.[app.currentStageIndex || 0]?.color}
                 />
               </Link>
