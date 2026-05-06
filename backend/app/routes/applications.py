@@ -32,7 +32,7 @@ router = APIRouter(tags=["applications"])
 
 # Initialize database on module load
 # This ensures tables exist when we start the server
-init_db()
+
 
 
 # ============================================
@@ -94,18 +94,20 @@ def create_application(
 ):
     """
     Create a new job application.
-    
-    Send JSON with:
-    - company (required)
-    - role (required)
-    - job_url (optional)
-    - source (optional)
-    - applied_date (required)
-    - etc.
-    
-    Returns the created application with its new ID.
     """
-    custom_stages_str = ','.join(application.custom_stages) if application.custom_stages else "Applied,Screening,Phone Screen,Technical,Onsite,Offer"
+    # Ensure we have stages, use defaults if not
+    stages = application.custom_stages if application.custom_stages else [
+        {"name": "Applied", "color": "#3b82f6"},
+        {"name": "Rejected", "color": "#ef4444"},
+        {"name": "Offer", "color": "#10b981"}
+    ]
+    
+    # Sync status with current stage
+    current_stage_index = application.current_stage_index or 0
+    if current_stage_index >= len(stages):
+        current_stage_index = 0
+    
+    current_stage_name = stages[current_stage_index]["name"]
     
     db_application = Application(
         user_id=current_user.id,
@@ -114,14 +116,14 @@ def create_application(
         job_url=application.job_url,
         source=application.source,
         applied_date=datetime.strptime(application.applied_date, "%Y-%m-%d").date(),
-        status=application.status,
+        status=current_stage_name,
         notes=application.notes,
         salary=application.salary,
         location=application.location,
-        current_stage_index=application.current_stage_index,
-        custom_stages=custom_stages_str,
+        current_stage_index=current_stage_index,
+        custom_stages=json.dumps(stages),
         timeline=json.dumps([{
-            "stage": application.custom_stages[0] if application.custom_stages else "Applied",
+            "stage": current_stage_name,
             "date": datetime.now().isoformat(),
             "notes": "Application created"
         }])
@@ -147,11 +149,6 @@ def update_application(
 ):
     """
     Update an existing application.
-    
-    Only include fields that were provided.
-    Returns 404 if not found.
-    
-    When status changes to "offer", automatically creates an offer entry.
     """
     application = db.query(Application).filter(
         Application.id == application_id,
@@ -166,40 +163,33 @@ def update_application(
     old_status = application.status
     old_stage_index = application.current_stage_index or 0
     update_data = updates.model_dump(exclude_unset=True)
-    new_status = update_data.get('status', old_status)
-    new_stage_index = update_data.get('current_stage_index', old_stage_index)
     
     for field, value in update_data.items():
         if value is not None:
             if field == 'custom_stages' and isinstance(value, list):
-                setattr(application, field, ','.join(value))
+                setattr(application, field, json.dumps(value))
             elif field == 'timeline' and isinstance(value, list):
                 setattr(application, field, json.dumps(value))
             else:
                 setattr(application, field, value)
     
-    if new_stage_index != old_stage_index:
-        custom_stages_list = application.custom_stages.split(',') if application.custom_stages else ['Applied', 'Screening', 'Interview', 'Offer']
-        if new_stage_index < len(custom_stages_list):
-            stage_name = custom_stages_list[new_stage_index].strip().lower()
-            if 'offer' in stage_name:
-                new_status = 'offer'
-            elif 'reject' in stage_name:
-                new_status = 'rejected'
-            elif stage_name in ['interview', 'technical', 'onsite']:
-                new_status = 'interview'
-            elif stage_name in ['screening', 'phone']:
-                new_status = 'screening'
-            else:
-                new_status = 'applied'
-            application.status = new_status
-    
+    # Synchronize status with current stage name
+    if application.custom_stages:
+        try:
+            stages = json.loads(application.custom_stages)
+            if isinstance(stages, list) and 0 <= application.current_stage_index < len(stages):
+                application.status = stages[application.current_stage_index]["name"]
+        except (json.JSONDecodeError, KeyError, TypeError, IndexError):
+            pass
+
+    new_status = application.status
     application.last_updated = datetime.now()
     
     db.commit()
     db.refresh(application)
     
-    if old_status != 'offer' and new_status == 'offer':
+    # If status is "Offer", create offer record if not exists
+    if old_status.lower() != 'offer' and new_status.lower() == 'offer':
         existing_offer = db.query(Offer).filter(Offer.application_id == application_id).first()
         if not existing_offer:
             db_offer = Offer(

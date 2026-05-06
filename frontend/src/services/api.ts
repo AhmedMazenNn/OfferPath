@@ -6,22 +6,30 @@
  * Handles all HTTP requests with proper error handling and TypeScript types.
  */
 
-import type { Application, ApplicationStatus, Interview, Offer, TimelineEvent } from '../types'
+import type { Application, ApplicationStatus, Interview, Offer, TimelineEvent, Stage } from '../types'
 import { DEFAULT_STAGES } from '../types'
 
 function getApiUrl() {
   const base = import.meta.env.VITE_API_URL || 'https://ahmedmazen-offer-path-backend.hf.space'
   
-  // Ensure we use https
-  let secureBase = base.trim()
-  if (secureBase.startsWith('http://')) {
-    secureBase = secureBase.replace('http://', 'https://')
-  } else if (!secureBase.startsWith('https://')) {
-    secureBase = `https://${secureBase}`
+  let cleanBase = base.trim()
+  const isLocal = cleanBase.includes('localhost') || cleanBase.includes('127.0.0.1')
+  
+  if (!isLocal) {
+    // Ensure we use https for production/remote
+    if (cleanBase.startsWith('http://')) {
+      cleanBase = cleanBase.replace('http://', 'https://')
+    } else if (!cleanBase.startsWith('https://')) {
+      cleanBase = `https://${cleanBase}`
+    }
+  } else {
+    // For local, ensure it has a protocol (default to http)
+    if (!cleanBase.startsWith('http://') && !cleanBase.startsWith('https://')) {
+      cleanBase = `http://${cleanBase}`
+    }
   }
   
-  // Remove trailing slashes
-  return secureBase.replace(/\/+$/, '')
+  return cleanBase.replace(/\/+$/, '')
 }
 
 const API_URL = getApiUrl()
@@ -87,13 +95,28 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}, _retry
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function transformApplicationFromBackend(backendApp: any): Application {
-  // Parse custom_stages from comma-separated string to array
-  let customStages: string[] = DEFAULT_STAGES;
+  // Parse custom_stages from JSON string to array of Stage objects
+  let customStages: Stage[] = DEFAULT_STAGES;
   if (backendApp.custom_stages) {
     if (typeof backendApp.custom_stages === 'string') {
-      customStages = backendApp.custom_stages.split(',').map((s: string) => s.trim()).filter(Boolean);
+      try {
+        const parsed = JSON.parse(backendApp.custom_stages);
+        if (Array.isArray(parsed)) {
+          customStages = parsed.map((s: any) => {
+            if (typeof s === 'string') return { name: s, color: '#3b82f6' };
+            return { name: s.name || '', color: s.color || '#3b82f6' };
+          });
+        } else {
+          customStages = backendApp.custom_stages.split(',').map((s: string) => ({ name: s.trim(), color: '#3b82f6' })).filter(s => s.name);
+        }
+      } catch {
+        customStages = backendApp.custom_stages.split(',').map((s: string) => ({ name: s.trim(), color: '#3b82f6' })).filter(s => s.name);
+      }
     } else if (Array.isArray(backendApp.custom_stages)) {
-      customStages = backendApp.custom_stages;
+      customStages = backendApp.custom_stages.map((s: any) => {
+        if (typeof s === 'string') return { name: s, color: '#3b82f6' };
+        return { name: s.name || '', color: s.color || '#3b82f6' };
+      });
     }
   }
   

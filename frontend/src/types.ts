@@ -1,4 +1,4 @@
-export type ApplicationStatus = 'applied' | 'screening' | 'interview' | 'offer' | 'rejected'
+export type ApplicationStatus = string
 
 export type ApplicationSource = 
   | 'LinkedIn Easy Apply' 
@@ -6,6 +6,11 @@ export type ApplicationSource =
   | 'Referral' 
   | 'Job Board' 
   | 'Other'
+
+export interface Stage {
+  name: string
+  color: string
+}
 
 export interface TimelineEvent {
   id: string
@@ -27,7 +32,7 @@ export interface Application {
   salary?: number
   location?: string
   currentStageIndex?: number
-  customStages?: string[]
+  customStages?: Stage[]
   timeline?: TimelineEvent[]
   lastUpdated?: string
   jobChangeDate?: string
@@ -78,14 +83,14 @@ export interface Offer {
   applicationRole?: string
 }
 
-export const DEFAULT_STAGES = [
-  'Applied',
-  'Screening',
-  'Interview',
-  'Offer'
+export const DEFAULT_STAGES: Stage[] = [
+  { name: 'Applied', color: '#3b82f6' },   // Blue
+  { name: 'Rejected', color: '#ef4444' },  // Red
+  { name: 'Offer', color: '#10b981' }      // Green
 ]
 
-export const STATUS_COLORS: Record<ApplicationStatus, { bg: string; text: string; border: string }> = {
+// Fallback colors for known statuses if not provided by stage
+export const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   applied: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-200 dark:border-blue-800' },
   screening: { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-700 dark:text-yellow-300', border: 'border-yellow-200 dark:border-yellow-800' },
   interview: { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300', border: 'border-purple-200 dark:border-purple-800' },

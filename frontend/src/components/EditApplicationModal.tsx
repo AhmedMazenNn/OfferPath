@@ -15,7 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAppContext } from '../context/AppContext'
 import { interviewsApi, offersApi } from '../services/api'
-import type { Application, ApplicationSource, Interview, Offer } from '../types'
+import type { Application, ApplicationSource, Interview, Offer, Stage } from '../types'
 
 interface EditApplicationModalProps {
   isOpen: boolean
@@ -31,7 +31,7 @@ export function EditApplicationModal({
   const { updateApplication } = useAppContext()
   
   const [formData, setFormData] = useState<Partial<Application>>({})
-  const [customStages, setCustomStages] = useState<string[]>(() => {
+  const [customStages, setCustomStages] = useState<Stage[]>(() => {
     if (application?.customStages) return application.customStages
     return []
   })
@@ -121,7 +121,7 @@ export function EditApplicationModal({
 
   const handleAddStage = () => {
     if (newStageName.trim()) {
-      setCustomStages([...customStages, newStageName.trim()])
+      setCustomStages([...customStages, { name: newStageName.trim(), color: '#3b82f6' }])
       setNewStageName('')
     }
   }
@@ -141,7 +141,13 @@ export function EditApplicationModal({
 
   const handleStageNameChange = (index: number, newName: string) => {
     const newStages = [...customStages]
-    newStages[index] = newName
+    newStages[index] = { ...newStages[index], name: newName }
+    setCustomStages(newStages)
+  }
+
+  const handleStageColorChange = (index: number, newColor: string) => {
+    const newStages = [...customStages]
+    newStages[index] = { ...newStages[index], color: newColor }
     setCustomStages(newStages)
   }
 
@@ -325,12 +331,21 @@ export function EditApplicationModal({
                                   className="w-4 h-4 text-primary-600 focus:ring-primary-500 border-slate-300"
                                 />
 
-                                <input
-                                  type="text"
-                                  value={stage}
-                                  onChange={(e) => handleStageNameChange(index, e.target.value)}
-                                  className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-black text-slate-900 dark:text-white px-0"
-                                />
+                                <div className="flex-1 flex items-center gap-2">
+                                  <input
+                                    type="color"
+                                    value={stage.color}
+                                    onChange={(e) => handleStageColorChange(index, e.target.value)}
+                                    className="w-6 h-6 rounded-lg cursor-pointer border-none bg-transparent p-0 overflow-hidden"
+                                    title="Choose stage color"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={stage.name}
+                                    onChange={(e) => handleStageNameChange(index, e.target.value)}
+                                    className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-black text-slate-900 dark:text-white px-0"
+                                  />
+                                </div>
 
                                 <div className="flex items-center gap-1">
                                   <button

@@ -129,11 +129,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const updateApplication = async (id: string, updates: Partial<Application>): Promise<Application> => {
     const currentApp = applications.find((app) => app.id === id)
     if (currentApp) {
+      const newIndex = updates.currentStageIndex !== undefined ? updates.currentStageIndex : currentApp.currentStageIndex
+      const newStages = updates.customStages !== undefined ? updates.customStages : currentApp.customStages
+      const newStatus = (newStages && newStages[newIndex]) ? newStages[newIndex].name : currentApp.status
+
       const optimisticApp: Application = {
         ...currentApp,
         ...updates,
-        currentStageIndex: updates.currentStageIndex !== undefined ? updates.currentStageIndex : currentApp.currentStageIndex,
-        customStages: updates.customStages !== undefined ? updates.customStages : currentApp.customStages,
+        status: newStatus,
+        currentStageIndex: newIndex,
+        customStages: newStages,
       }
       setApplications((prev) =>
         prev.map((app) => (app.id === id ? optimisticApp : app))

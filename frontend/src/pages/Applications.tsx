@@ -385,7 +385,10 @@ export function Applications({ onEdit, onSelect }: ApplicationsProps) {
                       </span>
                     </td>
                     <td className="px-6 py-5">
-                      <StatusBadge status={app.status || 'applied'} />
+                      <StatusBadge 
+                        status={app.status || 'applied'} 
+                        color={app.customStages?.find(s => s.name === app.status)?.color || app.customStages?.[app.currentStageIndex || 0]?.color}
+                      />
                     </td>
                     <td className="px-6 py-5">
                        <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300">
@@ -436,7 +439,10 @@ export function Applications({ onEdit, onSelect }: ApplicationsProps) {
                   <h3 className="font-bold text-slate-900 dark:text-white truncate">{app.company}</h3>
                   <p className="text-xs text-slate-500 truncate">{app.role}</p>
                 </div>
-                <StatusBadge status={app.status || 'applied'} />
+                <StatusBadge 
+                  status={app.status || 'applied'} 
+                  color={app.customStages?.find(s => s.name === app.status)?.color || app.customStages?.[app.currentStageIndex || 0]?.color}
+                />
               </Link>
               
               <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">

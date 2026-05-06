@@ -17,13 +17,22 @@ import os
 import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, Security, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.orm import Session
+from sqlalchemy import text
+from sqlalchemy.orm import Session, defer
 from jose import JWTError, jwt
 from dotenv import load_dotenv
 
 # Load environment variables
-env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env")
-load_dotenv(env_path)
+# Try to load .env from root first, then backend directory
+root_env = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env")
+backend_env = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
+
+if os.path.exists(root_env):
+    load_dotenv(root_env)
+elif os.path.exists(backend_env):
+    load_dotenv(backend_env)
+else:
+    load_dotenv() # Fallback to default behavior
 
 from app.database import get_db
 from app.models import User, UserCreate, UserLogin, UserResponse, UserUpdate
@@ -89,7 +98,7 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    user = db.query(User).filter(User.id == int(user_id)).first()
+    user = db.query(User).options(defer(User.avatar)).filter(User.id == int(user_id)).first()
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

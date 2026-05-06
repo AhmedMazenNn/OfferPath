@@ -50,7 +50,9 @@ export function ApplicationDetail({ onEdit }: ApplicationDetailProps) {
     )
   }
 
-  const currentStage = app.customStages?.[app.currentStageIndex || 0] || 'Applied'
+  const currentStageObj = app.customStages?.[app.currentStageIndex || 0]
+  const currentStageName = currentStageObj?.name || 'Applied'
+  const currentStageColor = currentStageObj?.color
 
   return (
     <div className="space-y-8 pb-10">
@@ -77,7 +79,10 @@ export function ApplicationDetail({ onEdit }: ApplicationDetailProps) {
              </h1>
              <div className="flex items-center gap-3">
                <span className="text-lg font-bold text-slate-500 dark:text-slate-400">{app.role}</span>
-               <StatusBadge status={app.status || 'applied'} />
+               <StatusBadge 
+                 status={app.status || 'applied'} 
+                 color={currentStageColor}
+               />
              </div>
            </div>
         </div>
@@ -90,7 +95,7 @@ export function ApplicationDetail({ onEdit }: ApplicationDetailProps) {
               <Edit3 className="w-4 h-4" />
               Edit Record
            </button>
-           {currentStage.toLowerCase() === 'interview' && (
+           {currentStageName.toLowerCase() === 'interview' && (
               <button
                 onClick={() => setScheduleModalOpen(true)}
                 className="btn-primary py-2.5 px-6 text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-xl shadow-primary-500/20"
@@ -122,7 +127,7 @@ export function ApplicationDetail({ onEdit }: ApplicationDetailProps) {
                  </div>
                  <div>
                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">Status</span>
-                   <p className="text-base font-bold text-slate-900 dark:text-white uppercase">{currentStage}</p>
+                   <p className="text-base font-bold text-slate-900 dark:text-white uppercase">{currentStageName}</p>
                  </div>
               </div>
 
@@ -276,7 +281,7 @@ export function ApplicationDetail({ onEdit }: ApplicationDetailProps) {
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                       <span className={`text-xs font-black uppercase tracking-tight ${isActive ? 'text-white' : ''}`}>{stage}</span>
+                       <span className={`text-xs font-black uppercase tracking-tight ${isActive ? 'text-white' : ''}`}>{stage.name}</span>
                        {isPast && <div className="w-2 h-2 rounded-full bg-emerald-500" />}
                        {isActive && <div className="w-2 h-2 rounded-full bg-white animate-ping" />}
                     </div>

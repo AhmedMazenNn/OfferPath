@@ -70,9 +70,10 @@ export function Dashboard({ onQuickLog }: { onQuickLog?: () => void }) {
   const statusGroups = useMemo(() => {
     const groups: Record<string, Application[]> = {}
     applications.forEach((app) => {
-      const stage = app.customStages?.[app.currentStageIndex || 0] || 'Applied'
-      if (!groups[stage]) groups[stage] = []
-      groups[stage].push(app)
+      const stageObj = app.customStages?.[app.currentStageIndex || 0]
+      const stageName = typeof stageObj === 'string' ? stageObj : stageObj?.name || 'Applied'
+      if (!groups[stageName]) groups[stageName] = []
+      groups[stageName].push(app)
     })
     return groups
   }, [applications])
@@ -87,15 +88,21 @@ export function Dashboard({ onQuickLog }: { onQuickLog?: () => void }) {
   }
 
   const pieData = useMemo(() => {
-    const stageCounts: Record<string, number> = {}
+    const stageData: Record<string, { count: number; color: string }> = {}
     applications.forEach((app) => {
-      const stage = app.customStages?.[app.currentStageIndex || 0] || 'Applied'
-      stageCounts[stage] = (stageCounts[stage] || 0) + 1
+      const stageObj = app.customStages?.[app.currentStageIndex || 0]
+      const name = typeof stageObj === 'string' ? stageObj : stageObj?.name || 'Applied'
+      const color = typeof stageObj === 'string' ? (stageColors[name] || '#64748b') : (stageObj?.color || '#64748b')
+      
+      if (!stageData[name]) {
+        stageData[name] = { count: 0, color }
+      }
+      stageData[name].count += 1
     })
-    return Object.entries(stageCounts).map(([name, value]) => ({
+    return Object.entries(stageData).map(([name, data]) => ({
       name,
-      value,
-      color: stageColors[name] || '#64748b'
+      value: data.count,
+      color: data.color
     }))
   }, [applications])
 
@@ -120,8 +127,9 @@ export function Dashboard({ onQuickLog }: { onQuickLog?: () => void }) {
   const uniqueStages = useMemo(() => {
     const stages = new Set<string>()
     applications.forEach((app) => {
-      const stage = app.customStages?.[app.currentStageIndex || 0] || 'Applied'
-      stages.add(stage)
+      const stageObj = app.customStages?.[app.currentStageIndex || 0]
+      const stageName = typeof stageObj === 'string' ? stageObj : stageObj?.name || 'Applied'
+      stages.add(stageName)
     })
     return Array.from(stages)
   }, [applications])
@@ -458,7 +466,10 @@ export function Dashboard({ onQuickLog }: { onQuickLog?: () => void }) {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1.5">
-                    <StatusBadge status={app.status || 'applied'} />
+                    <StatusBadge 
+                      status={app.status || 'applied'} 
+                      color={app.customStages?.find(s => s.name === app.status)?.color || app.customStages?.[app.currentStageIndex || 0]?.color}
+                    />
                     <span className="text-[10px] font-bold text-slate-400 uppercase">
                       {new Date(app.appliedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </span>

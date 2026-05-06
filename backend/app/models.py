@@ -11,6 +11,14 @@ from app.database import Base
 import json
 
 
+class Stage(BaseModel):
+    """
+    Represents a stage in the application pipeline.
+    """
+    name: str
+    color: str
+
+
 # ============================================
 # Pydantic Models (for API)
 # ============================================
@@ -37,9 +45,13 @@ class ApplicationCreate(ApplicationBase):
     Used when POSTing to /applications
     """
     current_stage_index: int = Field(default=0, ge=0, description="Index in custom_stages")
-    custom_stages: list[str] = Field(
-        default=["Applied", "Screening", "Interview", "Offer"],
-        description="Custom pipeline stages"
+    custom_stages: list[dict] = Field(
+        default=[
+            {"name": "Applied", "color": "#3b82f6"},
+            {"name": "Rejected", "color": "#ef4444"},
+            {"name": "Offer", "color": "#10b981"}
+        ],
+        description="Custom pipeline stages with colors"
     )
 
 
@@ -57,7 +69,7 @@ class ApplicationUpdate(BaseModel):
     salary: int | None = None
     location: str | None = None
     current_stage_index: int | None = None
-    custom_stages: list[str] | None = None
+    custom_stages: list[dict] | None = None
 
 
 class ApplicationResponse(ApplicationBase):
@@ -67,7 +79,7 @@ class ApplicationResponse(ApplicationBase):
     """
     id: int
     current_stage_index: int | None = 0
-    custom_stages: list[str] | None = None
+    custom_stages: list[dict] | None = None
     timeline: list[dict] | None = None
     last_updated: str | None = None
     interview_date: str | None = None
@@ -101,7 +113,14 @@ class ApplicationResponse(ApplicationBase):
         if isinstance(v, list):
             return v
         if isinstance(v, str):
-            return [s.strip() for s in v.split(',') if s.strip()]
+            try:
+                # Try to parse as JSON first (new format: list of dicts)
+                data = json.loads(v)
+                if isinstance(data, list):
+                    return data
+            except:
+                # Fallback to old format (comma-separated names)
+                return [{"name": s.strip(), "color": "#3b82f6"} for s in v.split(',') if s.strip()]
         return []
 
     @field_validator('timeline', mode='before')
@@ -194,7 +213,7 @@ class Application(Base):
     
     # Pipeline
     current_stage_index = Column(Integer, default=0)
-    custom_stages = Column(String(500), default="Applied,Screening,Interview,Offer")
+    custom_stages = Column(String(1000), default='[{"name": "Applied", "color": "#3b82f6"}, {"name": "Rejected", "color": "#ef4444"}, {"name": "Offer", "color": "#10b981"}]')
     timeline = Column(Text, default="[]")  # JSON string of timeline events
     
     # Relationships

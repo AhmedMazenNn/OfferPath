@@ -18,8 +18,16 @@ from sqlalchemy import text
 import os
 from dotenv import load_dotenv
 
-env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env")
-load_dotenv(env_path)
+# Try to load .env from root first, then backend directory
+root_env = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env")
+backend_env = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
+
+if os.path.exists(root_env):
+    load_dotenv(root_env)
+elif os.path.exists(backend_env):
+    load_dotenv(backend_env)
+else:
+    load_dotenv() # Fallback to default behavior
 
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*,https://offer-path-weld.vercel.app").split(",")
 
@@ -35,7 +43,9 @@ app = FastAPI(
 
 @app.on_event("startup")
 def startup_event():
-    """Create missing columns on startup."""
+    """Create missing columns and tables on startup."""
+    from app.database import init_db
+    init_db()
     try:
         with engine.connect() as conn:
             try:

@@ -51,8 +51,9 @@ export function Interviews() {
   // Apps in Interview stage that haven't had any interview scheduled yet
   const scheduledAppIds = new Set(interviews.map(i => i.applicationId))
   const awaitingSchedule = applications.filter(app => {
-    const stage = app.customStages?.[app.currentStageIndex ?? 0] || ''
-    return stage.toLowerCase() === 'interview' && !scheduledAppIds.has(app.id)
+    const stageObj = app.customStages?.[app.currentStageIndex ?? 0]
+    const stageName = typeof stageObj === 'string' ? stageObj : stageObj?.name || ''
+    return stageName.toLowerCase() === 'interview' && !scheduledAppIds.has(app.id)
   })
 
   const upcoming = interviews.filter(i => new Date(i.scheduledDate) >= new Date())
