@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useAppContext } from '../context/AppContext'
 import { ScheduleInterviewModal } from '../components/ScheduleInterviewModal'
 import { StatusBadge } from '../components/ui/StatusBadge'
+import { Pagination } from '../components/ui/Pagination'
 import type { ApplicationSource, Application, ApplicationStatus } from '../types'
 
 type SortOption = 'newest' | 'oldest' | 'company-az' | 'company-za' | 'title-az' | 'title-za' | 'status-asc' | 'status-desc'
@@ -25,8 +26,13 @@ export function Applications({ onEdit, onSelect }: ApplicationsProps) {
   const [companyFilter, setCompanyFilter] = useState('')
   const [editingDateId, setEditingDateId] = useState<string | null>(null)
   const [scheduleModalApp, setScheduleModalApp] = useState<Application | null>(null)
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
 
   const statusOptions = useMemo(() => {
+    // Use a Set for unique display labels
     const stages = new Set<string>(['Applied', 'Rejected', 'Offer'])
     applications.forEach(app => {
       if (app.customStages) {
@@ -34,9 +40,22 @@ export function Applications({ onEdit, onSelect }: ApplicationsProps) {
       }
       if (app.status) stages.add(app.status)
     })
+
+    // Create unique options based on lowercase values to avoid duplicate keys
+    const uniqueOptions = new Map<string, string>()
+    stages.forEach(s => {
+      const val = s.toLowerCase()
+      if (!uniqueOptions.has(val)) {
+        uniqueOptions.set(val, s)
+      }
+    })
+
     return [
       { value: 'all', label: 'All Statuses' },
-      ...Array.from(stages).map(s => ({ value: s.toLowerCase(), label: s }))
+      ...Array.from(uniqueOptions.entries()).map(([val, label]) => ({ 
+        value: val, 
+        label: label 
+      }))
     ]
   }, [applications])
 
@@ -105,6 +124,7 @@ export function Applications({ onEdit, onSelect }: ApplicationsProps) {
     setDateFrom('')
     setDateTo('')
     setCompanyFilter('')
+    setCurrentPage(1)
   }
 
   const handleDateEdit = async (id: string, newDate: string) => {
@@ -128,6 +148,12 @@ export function Applications({ onEdit, onSelect }: ApplicationsProps) {
       </div>
     )
   }
+
+  const totalPages = Math.ceil(filteredApplications.length / itemsPerPage)
+  const paginatedApplications = filteredApplications.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
 
   return (
     <div className="space-y-8 pb-10">
@@ -312,7 +338,7 @@ export function Applications({ onEdit, onSelect }: ApplicationsProps) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {filteredApplications.map((app, index) => (
+                {paginatedApplications.map((app, index) => (
                   <motion.tr
                     key={app.id}
                     initial={{ opacity: 0, x: -10 }}
@@ -428,7 +454,7 @@ export function Applications({ onEdit, onSelect }: ApplicationsProps) {
 
         {/* Mobile List View */}
         <div className="space-y-4 md:hidden">
-          {filteredApplications.map((app, index) => (
+          {paginatedApplications.map((app, index) => (
             <motion.div
               key={app.id}
               initial={{ opacity: 0, y: 10 }}
@@ -524,6 +550,16 @@ export function Applications({ onEdit, onSelect }: ApplicationsProps) {
           </div>
         )}
       </motion.div>
+
+      {/* Pagination */}
+      <Pagination 
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={(page) => {
+          setCurrentPage(page)
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+        }}
+      />
 
       {/* Schedule Interview Modal */}
       {scheduleModalApp && (

@@ -73,13 +73,13 @@ export function NewApplicationModal({
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl w-full max-w-xl overflow-hidden border border-slate-200 dark:border-slate-800 pointer-events-auto"
+              className="bg-white dark:bg-slate-900 md:rounded-[2.5rem] shadow-2xl w-full max-w-xl max-h-[95vh] md:max-h-[90vh] flex flex-col overflow-hidden border border-slate-200 dark:border-slate-800 pointer-events-auto rounded-t-[2.5rem] md:rounded-b-[2.5rem]"
             >
-              <div className="relative p-10">
+              <div className="relative p-6 md:p-10 overflow-y-auto flex-1 custom-scrollbar">
                 {/* Close Button */}
                 <button
                   onClick={onClose}
-                  className="absolute top-8 right-8 p-3 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors bg-slate-100 dark:bg-slate-800 rounded-2xl"
+                  className="absolute top-6 right-6 md:top-8 md:right-8 p-2.5 md:p-3 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors bg-slate-100 dark:bg-slate-800 rounded-xl md:rounded-2xl z-20"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -191,7 +191,7 @@ export function NewApplicationModal({
                   <div className="pt-6 flex justify-end">
                     <button
                       type="submit"
-                      className="btn-primary py-4 px-12 text-[10px] font-black uppercase tracking-[0.3em] shadow-xl shadow-primary-500/20 flex items-center gap-3"
+                      className="w-full md:w-auto btn-primary py-4 px-12 text-[10px] font-black uppercase tracking-[0.3em] shadow-xl shadow-primary-500/20 flex items-center justify-center gap-3"
                     >
                       <Plus className="w-4 h-4" />
                       Initialize Record

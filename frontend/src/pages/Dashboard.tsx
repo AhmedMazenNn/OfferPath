@@ -22,6 +22,7 @@ import {
 } from 'recharts'
 import { StatsCard } from '../components/ui/StatsCard'
 import { StatusBadge } from '../components/ui/StatusBadge'
+import { ChromeExtensionBanner } from '../components/ui/ChromeExtensionBanner'
 import { useAppContext } from '../context/AppContext'
 import type { Application, Interview } from '../types'
 import { analyticsApi, interviewsApi } from '../services/api'
@@ -34,7 +35,7 @@ export function Dashboard({ onQuickLog }: { onQuickLog?: () => void }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [trends, setTrends] = useState<any>(null)
 
-  const hasAuthToken = () => !!localStorage.getItem('offerpath_token')
+  const hasAuthToken = () => !!localStorage.getItem('offerpath_access_token')
 
   const loadAnalytics = async () => {
     if (!hasAuthToken()) return
@@ -181,6 +182,9 @@ export function Dashboard({ onQuickLog }: { onQuickLog?: () => void }) {
           </button>
         </div>
       </div>
+
+      {/* Chrome Extension Promo */}
+      <ChromeExtensionBanner />
 
       {/* Hero Stats Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

@@ -4,6 +4,7 @@
  * 
  * API service layer for communicating with the OfferPath backend.
  * Handles all HTTP requests with proper error handling and TypeScript types.
+ * Uses Access Token + Refresh Token authentication with proactive refresh.
  */
 
 import type { Application, ApplicationStatus, Interview, Offer, TimelineEvent, Stage } from '../types'
@@ -16,14 +17,12 @@ function getApiUrl() {
   const isLocal = cleanBase.includes('localhost') || cleanBase.includes('127.0.0.1')
   
   if (!isLocal) {
-    // Ensure we use https for production/remote
     if (cleanBase.startsWith('http://')) {
       cleanBase = cleanBase.replace('http://', 'https://')
     } else if (!cleanBase.startsWith('https://')) {
       cleanBase = `https://${cleanBase}`
     }
   } else {
-    // For local, ensure it has a protocol (default to http)
     if (!cleanBase.startsWith('http://') && !cleanBase.startsWith('https://')) {
       cleanBase = `http://${cleanBase}`
     }
@@ -34,19 +33,99 @@ function getApiUrl() {
 
 const API_URL = getApiUrl()
 
-// ============================================
-// Helper Functions
-// ============================================
+const ACCESS_TOKEN_KEY = 'offerpath_access_token'
+const REFRESH_TOKEN_KEY = 'offerpath_refresh_token'
+const TOKEN_EXPIRY_KEY = 'offerpath_token_expiry'
+
+function getAccessToken(): string | null {
+  return localStorage.getItem(ACCESS_TOKEN_KEY)
+}
+
+function getRefreshToken(): string | null {
+  return localStorage.getItem(REFRESH_TOKEN_KEY)
+}
+
+function setTokens(accessToken: string, refreshToken: string, expiresIn: number) {
+  localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
+  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+  const expiryTime = Date.now() + (expiresIn * 1000)
+  localStorage.setItem(TOKEN_EXPIRY_KEY, String(expiryTime))
+}
+
+function clearTokens() {
+  localStorage.removeItem(ACCESS_TOKEN_KEY)
+  localStorage.removeItem(REFRESH_TOKEN_KEY)
+  localStorage.removeItem(TOKEN_EXPIRY_KEY)
+}
+
+let isRefreshing = false
+let refreshPromise: Promise<void> | null = null
+
+async function doRefreshToken(): Promise<boolean> {
+  const refreshToken = getRefreshToken()
+  if (!refreshToken) {
+    return false
+  }
+  
+  try {
+    const response = await fetch(`${API_URL}/api/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+    })
+    
+    if (!response.ok) {
+      return false
+    }
+    
+    const data = await response.json()
+    if (data.access_token && data.refresh_token) {
+      setTokens(data.access_token, data.refresh_token, data.expires_in)
+      return true
+    }
+    return false
+  } catch (e) {
+    console.error('Token refresh failed:', e)
+    return false
+  }
+}
+
+async function refreshTokenIfNeeded(): Promise<boolean> {
+  if (isRefreshing) {
+    await refreshPromise
+    return !!getAccessToken()
+  }
+  
+  const expiryStr = localStorage.getItem(TOKEN_EXPIRY_KEY)
+  const expiry = expiryStr ? parseInt(expiryStr, 10) : 0
+  const now = Date.now()
+  const fiveMinutes = 5 * 60 * 1000
+  
+  if (expiry && now >= expiry - fiveMinutes) {
+    isRefreshing = true
+    refreshPromise = (async () => {
+      await doRefreshToken()
+      isRefreshing = false
+      refreshPromise = null
+    })()
+    await refreshPromise
+    return !!getAccessToken()
+  }
+  
+  return true
+}
 
 async function fetchWithAuth(endpoint: string, options: RequestInit = {}, _retry = true) {
-  const token = localStorage.getItem('offerpath_token')
+  const token = getAccessToken()
   
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     ...options.headers,
   }
   
-  if (token) {
+  if (token && !endpoint.includes('/auth/login') && !endpoint.includes('/auth/signup')) {
     (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
   }
   
@@ -57,35 +136,27 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}, _retry
     cache: 'no-store',
     ...options,
     headers,
+    credentials: 'include',
   })
   
   if (response.status === 401 && _retry) {
-    try {
-      const refreshData = await fetch(`${API_URL}/api/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      })
-      if (refreshData.ok) {
-        const refreshResult = await refreshData.json()
-        if (refreshResult.token) {
-          localStorage.setItem('offerpath_token', refreshResult.token)
-          return fetchWithAuth(endpoint, options, false)
-        }
-      }
-    } catch (e) {
-      console.error('Token refresh failed:', e)
+    const refreshed = await refreshTokenIfNeeded()
+    if (refreshed) {
+      return fetchWithAuth(endpoint, options, false)
     }
+    clearTokens()
+    window.dispatchEvent(new CustomEvent('logout'))
   }
   
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: 'An error occurred' }))
     throw new Error(error.detail || `HTTP ${response.status}`)
   }
-  
+
   if (response.status === 204) {
     return null
   }
-  
+
   return response.json()
 }
 
@@ -768,15 +839,20 @@ export const analyticsApi = {
 
 export const authApi = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  login: async (email: string, password: string): Promise<{ user: any; token: string }> => {
+  login: async (email: string, password: string, rememberMe: boolean = false): Promise<{ user: any; access_token: string; refresh_token: string }> => {
     let lastError: Error | null = null
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        const data = await fetchWithAuth('/auth/login', {
+        const data = await fetchWithAuth(`/auth/login?remember_me=${rememberMe}`, {
           method: 'POST',
           body: JSON.stringify({ email, password }),
         })
-        return data as { user: any; token: string }
+        
+        if (data.access_token && data.refresh_token) {
+          setTokens(data.access_token, data.refresh_token, data.expires_in)
+        }
+        
+        return data as { user: any; access_token: string; refresh_token: string }
       } catch (e) {
         lastError = e instanceof Error ? e : new Error('An error occurred')
         if (lastError.message.includes('500') || lastError.message.includes('Internal Server Error')) {
@@ -790,15 +866,20 @@ export const authApi = {
   },
    
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  signup: async (email: string, name: string, password: string): Promise<{ user: any; token: string }> => {
+  signup: async (email: string, name: string, password: string): Promise<{ user: any; access_token: string; refresh_token: string }> => {
     const data = await fetchWithAuth('/auth/signup', {
       method: 'POST',
       body: JSON.stringify({ email, name, password }),
     })
-    return data as { user: any; token: string }
+    
+    if (data.access_token && data.refresh_token) {
+      setTokens(data.access_token, data.refresh_token, data.expires_in)
+    }
+    
+    return data as { user: any; access_token: string; refresh_token: string }
   },
   
-getMe: async () => {
+  getMe: async () => {
     return fetchWithAuth('/auth/me')
   },
 
@@ -806,6 +887,9 @@ getMe: async () => {
     const data = await fetchWithAuth('/auth/refresh', {
       method: 'POST',
     })
+    if (data.access_token && data.refresh_token) {
+      setTokens(data.access_token, data.refresh_token, data.expires_in)
+    }
     return data
   },
 
@@ -814,6 +898,15 @@ getMe: async () => {
       method: 'PUT',
       body: JSON.stringify(updates),
     })
+  },
+
+  logout: async () => {
+    try {
+      await fetchWithAuth('/auth/logout', { method: 'POST' })
+    } catch (e) {
+      console.error('Logout API call failed:', e)
+    }
+    clearTokens()
   },
 }
 

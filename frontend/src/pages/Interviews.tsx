@@ -25,7 +25,7 @@ export function Interviews() {
   const [filter, setFilter] = useState<'upcoming' | 'past' | 'all'>('upcoming')
   const [scheduleModalApp, setScheduleModalApp] = useState<Application | null>(null)
 
-  const hasAuthToken = () => !!localStorage.getItem('offerpath_token')
+  const hasAuthToken = () => !!localStorage.getItem('offerpath_access_token')
 
   const loadInterviews = useCallback(async () => {
     if (!hasAuthToken()) {

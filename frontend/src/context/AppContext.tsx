@@ -1,11 +1,11 @@
-import React, { createContext, useContext, useEffect } from 'react'
+import React, { createContext, useContext, useEffect, useCallback } from 'react'
 import type { Application, User } from '../types'
 import { applicationsApi, authApi } from '../services/api'
 
 interface AppContextType {
   user: User | null
   isAuthenticated: boolean
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>
   signup: (email: string, name: string, password: string) => Promise<void>
   logout: () => void
   applications: Application[]
@@ -19,9 +19,11 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
 
-// Helper to sync auth state with Chrome extension
+const ACCESS_TOKEN_KEY = 'offerpath_access_token'
+const REFRESH_TOKEN_KEY = 'offerpath_refresh_token'
+const USER_KEY = 'offerpath_user'
+
 const syncWithExtension = (token: string | null, user: User | null) => {
-  // Check if we're in a Chrome extension context
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const win = window as any
   if (win?.chrome?.storage) {
@@ -38,9 +40,10 @@ const syncWithExtension = (token: string | null, user: User | null) => {
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(() => {
-    const savedUser = localStorage.getItem('offerpath_user')
-    const savedToken = localStorage.getItem('offerpath_token')
-    if (savedUser && savedToken) {
+    const savedUser = localStorage.getItem(USER_KEY)
+    const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY)
+    const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
+    if (savedUser && accessToken && refreshToken) {
       return JSON.parse(savedUser)
     }
     return null
@@ -61,28 +64,47 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  // Load applications when user is authenticated
   useEffect(() => {
-    if (user) {
-      loadApplications()
-    } else {
-      setApplications([])
-      setApplicationsLoading(false)
+    const handleLogout = () => {
+      logout()
     }
-  }, [user])
+    window.addEventListener('logout', handleLogout)
+    return () => window.removeEventListener('logout', handleLogout)
+  }, [])
 
-  const login = async (email: string, password: string) => {
+  useEffect(() => {
+    const validateAndLoad = async () => {
+      const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY)
+      const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
+      
+      if (user && accessToken && refreshToken) {
+        try {
+          await authApi.getMe()
+          await loadApplications()
+        } catch (error) {
+          console.error('Session validation failed:', error)
+          logout()
+        }
+      } else {
+        setApplications([])
+        setApplicationsLoading(false)
+      }
+    }
+    
+    validateAndLoad()
+  }, [])
+
+  const login = async (email: string, password: string, rememberMe: boolean = false) => {
     try {
-      const data = await authApi.login(email, password)
+      const data = await authApi.login(email, password, rememberMe)
       const userWithAdmin = {
         ...data.user,
         isAdmin: data.user.is_admin || false
       }
-      localStorage.setItem('offerpath_token', data.token)
-      localStorage.setItem('offerpath_user', JSON.stringify(userWithAdmin))
+      localStorage.setItem(USER_KEY, JSON.stringify(userWithAdmin))
       setUser(userWithAdmin)
-      // Sync with Chrome extension
-      syncWithExtension(data.token, userWithAdmin)
+      await loadApplications()
+      syncWithExtension(data.access_token, userWithAdmin)
     } catch (error) {
       console.error('Login failed:', error)
       throw error
@@ -96,24 +118,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ...data.user,
         isAdmin: data.user.is_admin || false
       }
-      localStorage.setItem('offerpath_token', data.token)
-      localStorage.setItem('offerpath_user', JSON.stringify(userWithAdmin))
+      localStorage.setItem(USER_KEY, JSON.stringify(userWithAdmin))
       setUser(userWithAdmin)
-      // Sync with Chrome extension
-      syncWithExtension(data.token, userWithAdmin)
+      await loadApplications()
+      syncWithExtension(data.access_token, userWithAdmin)
     } catch (error) {
       console.error('Signup failed:', error)
       throw error
     }
   }
 
-  const logout = () => {
-    localStorage.removeItem('offerpath_token')
-    localStorage.removeItem('offerpath_user')
+  const logout = useCallback(async () => {
+    try {
+      await authApi.logout()
+    } catch (e) {
+      console.error('Logout API call failed:', e)
+    }
+    localStorage.removeItem(ACCESS_TOKEN_KEY)
+    localStorage.removeItem(REFRESH_TOKEN_KEY)
+    localStorage.removeItem(USER_KEY)
     setUser(null)
-    // Sync with Chrome extension
     syncWithExtension(null, null)
-  }
+  }, [])
 
   const addApplication = async (appData: Omit<Application, 'id' | 'timeline' | 'lastUpdated'>): Promise<Application> => {
     try {
@@ -184,11 +210,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ...updatedUser,
         isAdmin: updatedUser.is_admin || false
       }
-      localStorage.setItem('offerpath_user', JSON.stringify(userWithAdmin))
+      localStorage.setItem(USER_KEY, JSON.stringify(userWithAdmin))
       setUser(userWithAdmin)
-      // Sync with Chrome extension
-      const token = localStorage.getItem('offerpath_token')
-      syncWithExtension(token, userWithAdmin)
+      const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY)
+      syncWithExtension(accessToken, userWithAdmin)
     } catch (error) {
       console.error('Failed to update profile:', error)
       throw error

@@ -8,6 +8,7 @@ import { useAppContext } from '../context/AppContext'
 export function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -27,7 +28,7 @@ export function Login() {
     setLoading(true)
 
     try {
-      await login(email, password)
+      await login(email, password, rememberMe)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Signature verification failed.')
     } finally {
@@ -101,6 +102,19 @@ export function Login() {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="rememberMe"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 rounded border-white/20 bg-white/5 text-primary-500 focus:ring-primary-500/50 focus:ring-offset-0 cursor-pointer"
+              />
+              <label htmlFor="rememberMe" className="text-xs font-medium text-slate-400 cursor-pointer">
+                Remember me for 90 days
+              </label>
             </div>
 
             {error && (

@@ -53,6 +53,7 @@ export function EditApplicationModal({
         notes: application.notes || '',
         currentStageIndex: application.currentStageIndex || 0,
         jobChangeDate: application.jobChangeDate || '',
+        appliedDate: application.appliedDate ? application.appliedDate.split('T')[0] : '',
       })
       setCustomStages(application.customStages || [])
       
@@ -196,29 +197,29 @@ export function EditApplicationModal({
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden border border-slate-200 dark:border-slate-800 pointer-events-auto"
+              className="bg-white dark:bg-slate-900 md:rounded-[2.5rem] shadow-2xl w-full max-w-4xl max-h-[95vh] md:max-h-[90vh] flex flex-col overflow-hidden border border-slate-200 dark:border-slate-800 pointer-events-auto rounded-t-[2.5rem] md:rounded-b-[2.5rem]"
             >
               {/* Header */}
-              <div className="px-10 py-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900/50 backdrop-blur-xl relative z-10">
-                <div>
+              <div className="px-6 md:px-10 py-6 md:py-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900/50 backdrop-blur-xl relative z-10">
+                <div className="min-w-0">
                    <div className="flex items-center gap-2 text-primary-500 font-black text-[10px] uppercase tracking-widest mb-1">
                       <Layers className="w-3.5 h-3.5" />
                       <span>Revising Context</span>
                    </div>
-                   <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                   <h2 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight truncate">
                      Case File: {application.company}
                    </h2>
                 </div>
                 <button
                   onClick={onClose}
-                  className="p-3 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors bg-slate-100 dark:bg-slate-800 rounded-2xl"
+                  className="p-2.5 md:p-3 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors bg-slate-100 dark:bg-slate-800 rounded-xl md:rounded-2xl flex-shrink-0"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               {/* Form Content */}
-              <div className="p-10 overflow-y-auto flex-1 custom-scrollbar">
+              <div className="px-6 md:p-10 py-8 overflow-y-auto flex-1 custom-scrollbar">
                 <form id="edit-form" onSubmit={handleSubmit} className="space-y-12">
                   
                   {/* Grid Layout for sections */}
@@ -252,7 +253,7 @@ export function EditApplicationModal({
                                   className="input-base"
                                 />
                              </div>
-<div className="grid grid-cols-3 gap-6">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                  <div className="space-y-2">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Channel</label>
                                     <select
@@ -268,15 +269,6 @@ export function EditApplicationModal({
                                     </select>
                                  </div>
                                  <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Job Change Date</label>
-                                    <input
-                                       type="date"
-                                       value={formData.jobChangeDate || ''}
-                                       onChange={(e) => handleChange('jobChangeDate', e.target.value)}
-                                       className="input-base"
-                                    />
-                                 </div>
-                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Digital Link</label>
                                     <input
                                        type="url"
@@ -284,6 +276,27 @@ export function EditApplicationModal({
                                        onChange={(e) => handleChange('jobUrl', e.target.value)}
                                        className="input-base"
                                        placeholder="https://..."
+                                    />
+                                 </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                 <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Applied Date</label>
+                                    <input
+                                       type="date"
+                                       value={formData.appliedDate || ''}
+                                       onChange={(e) => handleChange('appliedDate', e.target.value)}
+                                       className="input-base"
+                                    />
+                                 </div>
+                                 <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Last Change Date</label>
+                                    <input
+                                       type="date"
+                                       value={formData.jobChangeDate || ''}
+                                       onChange={(e) => handleChange('jobChangeDate', e.target.value)}
+                                       className="input-base"
                                     />
                                  </div>
                               </div>
@@ -459,18 +472,18 @@ export function EditApplicationModal({
               </div>
 
               {/* Footer Actions */}
-              <div className="px-10 py-8 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 backdrop-blur-xl flex items-center justify-end gap-4 relative z-10">
+              <div className="px-6 md:px-10 py-6 md:py-8 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 backdrop-blur-xl flex flex-col-reverse md:flex-row items-center justify-end gap-3 md:gap-4 relative z-10">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-8 py-3.5 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+                  className="w-full md:w-auto px-8 py-3.5 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
                 >
                   Discard
                 </button>
                 <button
                   type="submit"
                   form="edit-form"
-                  className="btn-primary px-10 py-3.5 text-[10px] font-black uppercase tracking-[0.3em] shadow-xl shadow-primary-500/20 flex items-center gap-2"
+                  className="w-full md:w-auto btn-primary px-10 py-3.5 text-[10px] font-black uppercase tracking-[0.3em] shadow-xl shadow-primary-500/20 flex items-center justify-center gap-2"
                 >
                   <SaveIcon className="w-4 h-4" />
                   Apply Changes

@@ -26,7 +26,7 @@ export function OfferComparison() {
   const [expandedPros, setExpandedPros] = useState<Record<string, boolean>>({})
   const [expandedCons, setExpandedCons] = useState<Record<string, boolean>>({})
 
-  const hasAuthToken = () => !!localStorage.getItem('offerpath_token')
+  const hasAuthToken = () => !!localStorage.getItem('offerpath_access_token')
 
   const loadOffers = async () => {
     if (!hasAuthToken()) {

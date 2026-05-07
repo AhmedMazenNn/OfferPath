@@ -28,7 +28,7 @@ export function AdminPanel() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newUser, setNewUser] = useState({ name: '', email: '', password: '', isAdmin: false })
 
-  const hasAuthToken = () => !!localStorage.getItem('offerpath_token')
+  const hasAuthToken = () => !!localStorage.getItem('offerpath_access_token')
 
   const loadData = async () => {
     if (!hasAuthToken()) {

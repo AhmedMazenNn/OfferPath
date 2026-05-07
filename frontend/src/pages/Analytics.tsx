@@ -19,7 +19,7 @@ import { analyticsApi } from '../services/api'
 import { StatsCard } from '../components/ui/StatsCard'
 
 function hasAuthToken() {
-  return !!localStorage.getItem('offerpath_token')
+  return !!localStorage.getItem('offerpath_access_token')
 }
 
 export function Analytics() {
