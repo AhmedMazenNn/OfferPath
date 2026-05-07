@@ -18,7 +18,7 @@ import os
 import secrets
 
 import bcrypt
-from fastapi import APIRouter, Depends, HTTPException, Security, status, Cookie
+from fastapi import APIRouter, Depends, HTTPException, Security, status, Cookie, Header
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import text
 from sqlalchemy.orm import Session, defer
@@ -128,9 +128,15 @@ async def get_current_user(
     return user
 
 
-def get_refresh_token_from_cookie(refresh_token: str = Cookie(None), db: Session = Depends(get_db)) -> RefreshToken:
-    """Dependency to validate refresh token from cookie."""
-    if not refresh_token:
+def get_refresh_token_from_cookie(
+    refresh_token: str = Cookie(None),
+    x_refresh_token: str = Header(None, alias="X-Refresh-Token"),
+    db: Session = Depends(get_db)
+) -> RefreshToken:
+    """Dependency to validate refresh token from cookie or header."""
+    token = refresh_token or x_refresh_token
+    
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token not provided",
@@ -160,7 +166,7 @@ def get_refresh_token_from_cookie(refresh_token: str = Cookie(None), db: Session
         )
     
     rt = db.query(RefreshToken).filter(
-        RefreshToken.token == refresh_token,
+        RefreshToken.token == token,
         RefreshToken.user_id == int(user_id),
         RefreshToken.expires_at > datetime.utcnow()
     ).first()
