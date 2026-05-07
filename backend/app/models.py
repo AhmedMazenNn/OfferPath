@@ -181,6 +181,16 @@ class UserResponse(UserBase):
     model_config = {"from_attributes": True}
 
 
+class TokenResponse(BaseModel):
+    """
+    Model for token responses (access + refresh tokens).
+    """
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    expires_in: int  # seconds
+
+
 # ============================================
 # SQLAlchemy Models (for Database)
 # ============================================
@@ -238,6 +248,23 @@ class User(Base):
     
     # Relationships
     applications = relationship("Application", back_populates="user", cascade="all, delete-orphan")
+    refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
+
+
+class RefreshToken(Base):
+    """
+    Database table for refresh tokens.
+    """
+    __tablename__ = "refresh_tokens"
+    
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    token = Column(String(500), unique=True, nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    user = relationship("User", back_populates="refresh_tokens")
 
 
 # ============================================
