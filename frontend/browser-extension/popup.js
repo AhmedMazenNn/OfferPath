@@ -24,12 +24,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     manualSaveBtn: document.getElementById('manual-save-btn'),
     appCount: document.getElementById('app-count'),
     openApp: document.getElementById('open-app'),
+    appsList: document.getElementById('apps-list'),
+    appsListSection: document.getElementById('apps-list-section'),
+    listSearch: document.getElementById('list-search'),
+    listFilter: document.getElementById('list-filter'),
+    listPagination: document.getElementById('list-pagination'),
+    prevPage: document.getElementById('prev-page'),
+    nextPage: document.getElementById('next-page'),
+    pageInfo: document.getElementById('page-info'),
   };
 
-  const API_BASE_URL = 'https://ahmedmazen-offer-path-backend.hf.space/api';
+  let API_BASE_URL = 'https://ahmedmazen-offer-path-backend.hf.space/api';
+  
+  async function getApiUrl() {
+    const { apiUrl } = await chrome.storage.local.get('apiUrl');
+    if (apiUrl) {
+      API_BASE_URL = apiUrl.replace(/\/+$/, '') + '/api';
+    }
+    return API_BASE_URL;
+  }
 
   let currentJobData = null;
   let isAuthenticated = false;
+  
+  // List state
+  let allApplications = [];
+  let currentPage = 1;
+  const itemsPerPage = 4;
 
   // Initialize
   init();
@@ -40,22 +61,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (isAuthenticated) {
       await loadJobFromPage();
       await updateAppCount();
+      await renderApplicationsList();
     }
   }
 
   // Check if user is authenticated
   async function checkAuthStatus() {
-    const { authToken, user } = await chrome.storage.local.get(['authToken', 'user']);
+    const { accessToken, user } = await chrome.storage.local.get(['accessToken', 'user']);
     
-    if (authToken && user) {
+    if (accessToken && user) {
       isAuthenticated = true;
       elements.authSection.classList.add('hidden');
       elements.mainSection.classList.remove('hidden');
+      elements.appsListSection.classList.remove('hidden');
       elements.userName.textContent = user.name || user.email;
     } else {
       isAuthenticated = false;
       elements.authSection.classList.remove('hidden');
       elements.mainSection.classList.add('hidden');
+      elements.appsListSection.classList.add('hidden');
     }
   }
 
@@ -127,6 +151,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setTimeout(() => {
       showNoJob();
       currentJobData = null;
+      renderApplicationsList();
     }, 2000);
   }
 
@@ -146,6 +171,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     chrome.runtime.sendMessage({ action: 'getApplications' }, (response) => {
       if (response?.data) {
         elements.appCount.textContent = response.data.length;
+        // Also update the list if we're here
+        if (isAuthenticated) renderApplicationsList(response.data);
       }
     });
   }
@@ -165,8 +192,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       elements.saveBtn.textContent = 'Save Application';
       
       if (response?.success) {
-        showSuccess();
+        if (response.local) {
+          alert('Saved locally to extension (offline). Open the OfferPath web app to sync.');
+        } else {
+          showSuccess();
+        }
         updateAppCount();
+        renderApplicationsList();
       } else {
         alert('Failed to save: ' + (response?.error || 'Unknown error'));
       }
@@ -187,7 +219,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     elements.submitLogin.textContent = 'Signing in...';
 
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      const baseUrl = await getApiUrl();
+      const response = await fetch(`${baseUrl}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -195,9 +228,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       
       if (response.ok) {
         const data = await response.json();
+        const expiry = Date.now() + (30 * 60 * 1000);
         await chrome.storage.local.set({ 
-          authToken: data.token, 
-          user: data.user 
+          accessToken: data.access_token, 
+          refreshToken: data.refresh_token,
+          user: data.user,
+          tokenExpiry: String(expiry)
         });
         
         isAuthenticated = true;
@@ -206,13 +242,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         elements.userName.textContent = data.user.name;
         
         chrome.runtime.sendMessage({ 
-          action: 'setAuthToken', 
-          token: data.token, 
+          action: 'setAuthTokens', 
+          accessToken: data.access_token, 
+          refreshToken: data.refresh_token,
           userId: data.user.id 
         });
 
         await loadJobFromPage();
         await updateAppCount();
+        await renderApplicationsList();
       } else {
         const error = await response.json();
         alert(`Login failed: ${error.detail || 'Invalid credentials'}`);
@@ -245,7 +283,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     elements.submitSignup.textContent = 'Creating...';
 
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+      const baseUrl = await getApiUrl();
+      const response = await fetch(`${baseUrl}/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, name, password })
@@ -253,9 +292,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       
       if (response.ok) {
         const data = await response.json();
+        const expiry = Date.now() + (30 * 60 * 1000);
         await chrome.storage.local.set({ 
-          authToken: data.token, 
-          user: data.user 
+          accessToken: data.access_token, 
+          refreshToken: data.refresh_token,
+          user: data.user,
+          tokenExpiry: String(expiry)
         });
         
         isAuthenticated = true;
@@ -264,8 +306,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         elements.userName.textContent = data.user.name;
         
         chrome.runtime.sendMessage({ 
-          action: 'setAuthToken', 
-          token: data.token, 
+          action: 'setAuthTokens', 
+          accessToken: data.access_token, 
+          refreshToken: data.refresh_token,
           userId: data.user.id 
         });
 
@@ -285,10 +328,90 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Logout handler
   async function handleLogout() {
-    await chrome.storage.local.remove(['authToken', 'user']);
+    await chrome.storage.local.remove(['accessToken', 'refreshToken', 'user', 'tokenExpiry']);
     isAuthenticated = false;
     elements.authSection.classList.remove('hidden');
     elements.mainSection.classList.add('hidden');
+  }
+
+  // Render applications list
+  async function renderApplicationsList(providedData) {
+    if (!isAuthenticated) return;
+    
+    if (providedData) {
+      allApplications = providedData;
+    } else {
+      const response = await new Promise(resolve => {
+        chrome.runtime.sendMessage({ action: 'getApplications' }, resolve);
+      });
+      allApplications = response?.data || [];
+    }
+    
+    if (allApplications.length === 0) {
+      elements.appsList.innerHTML = '<div class="empty-apps">No applications yet</div>';
+      elements.listPagination.classList.add('hidden');
+      return;
+    }
+    
+    // Apply filters
+    const query = (elements.listSearch.value || '').toLowerCase();
+    const statusFilter = elements.listFilter.value;
+    
+    let filtered = allApplications.filter(app => {
+      const matchesSearch = !query || 
+        (app.company || '').toLowerCase().includes(query) || 
+        (app.role || '').toLowerCase().includes(query);
+      
+      const status = (app.status || 'applied').toLowerCase();
+      const matchesStatus = statusFilter === 'all' || status.includes(statusFilter);
+      
+      return matchesSearch && matchesStatus;
+    });
+    
+    // Sort by newest first
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.applied_date || a.appliedDate || 0);
+      const dateB = new Date(b.applied_date || b.appliedDate || 0);
+      return dateB - dateA;
+    });
+    
+    // Pagination
+    const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
+    if (currentPage > totalPages) currentPage = totalPages;
+    
+    const start = (currentPage - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    const pageItems = filtered.slice(start, end);
+    
+    // Update UI
+    if (filtered.length === 0) {
+      elements.appsList.innerHTML = '<div class="empty-apps">No matches found</div>';
+      elements.listPagination.classList.add('hidden');
+    } else {
+      elements.appsList.innerHTML = pageItems.map(app => {
+        const status = (app.status || 'Applied').toLowerCase();
+        let statusClass = 'status-applied';
+        if (status.includes('interview')) statusClass = 'status-interview';
+        else if (status.includes('offer')) statusClass = 'status-offer';
+        else if (status.includes('rejected')) statusClass = 'status-rejected';
+        
+        return `
+          <div class="app-item">
+            <div class="app-info">
+              <div class="app-company">${app.company}</div>
+              <div class="app-role">${app.role}</div>
+            </div>
+            <div class="app-status-badge ${statusClass}">${app.status || 'Applied'}</div>
+          </div>
+        `;
+      }).join('');
+      
+      // Update pagination info
+      elements.listPagination.classList.toggle('hidden', totalPages <= 1);
+      elements.pageInfo.textContent = `${currentPage} / ${totalPages}`;
+      elements.prevPage.disabled = currentPage === 1;
+      elements.nextPage.disabled = currentPage === totalPages;
+    }
   }
 
   // Manual save
@@ -332,5 +455,31 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   elements.passwordInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') handleLogin();
+  });
+
+  // List event listeners
+  elements.listSearch.addEventListener('input', () => {
+    currentPage = 1;
+    renderApplicationsList();
+  });
+  
+  elements.listFilter.addEventListener('change', () => {
+    currentPage = 1;
+    renderApplicationsList();
+  });
+  
+  elements.prevPage.addEventListener('click', () => {
+    if (currentPage > 1) {
+      currentPage--;
+      renderApplicationsList();
+    }
+  });
+  
+  elements.nextPage.addEventListener('click', () => {
+    const totalPages = Math.ceil(allApplications.length / itemsPerPage);
+    if (currentPage < totalPages) {
+      currentPage++;
+      renderApplicationsList();
+    }
   });
 });

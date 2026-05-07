@@ -36,10 +36,15 @@ function extractJobData() {
   
   // Try LinkedIn - multiple selectors for job details
   if (hostname.includes('linkedin.com')) {
-    // Job title - try multiple selectors
+    // Job title - try multiple selectors including newer ones
     const titleSelectors = [
-      'h1', '.top-card-layout__title', '.job-details-skill-match-status__container h1',
-      '. jobs-details-job-details__entity-title', '[data-test-id="job-detail-title"]'
+      'h1', 
+      '.top-card-layout__title', 
+      '.job-details-skill-match-status__container h1',
+      '.jobs-details-job-details__entity-title', 
+      '[data-test-id="job-detail-title"]',
+      '.t-24.t-bold.inline',
+      '.jobs-unified-top-card__job-title'
     ];
     for (const sel of titleSelectors) {
       const el = document.querySelector(sel);
@@ -51,101 +56,76 @@ function extractJobData() {
     
     // Company name - multiple selectors
     const companySelectors = [
-      '.top-card-layout__company-name', '.job-details-skill-match-status__company-name',
-      '.jobs-details-job-details__company-name', '[data-test-id="job-detail-company-name"]',
-      'a[href*="/company/"]', '.company-name'
+      '.top-card-layout__company-name', 
+      '.job-details-skill-match-status__company-name',
+      '.jobs-details-job-details__company-name', 
+      '[data-test-id="job-detail-company-name"]',
+      '.jobs-unified-top-card__company-name',
+      '.jobs-unified-top-card__subtitle-grid-item',
+      'a[href*="/company/"]', 
+      '.company-name'
     ];
     for (const sel of companySelectors) {
       const el = document.querySelector(sel);
-      if (el?.textContent?.trim()) {
+      if (el?.textContent?.trim() && !el.textContent.toLowerCase().includes('follow')) {
         company = el.textContent.trim();
         break;
       }
     }
     
-    // If still no company, try from URL pattern
+    // If still no company, try from URL pattern or text analysis
     if (!company) {
       const companyMatch = window.location.pathname.match(/\/company\/([^\/]+)/);
       if (companyMatch) {
         company = companyMatch[1].replace(/-/g, ' ');
-        company = company.replace(/([a-z])([A-Z])/g, '$1 $2');
       }
     }
   }
   
   // Try Indeed
   if (hostname.includes('indeed.com')) {
-    const titleEl = document.querySelector('[data-testid="jobsearch-JobTitle"], .jobTitle, h1.jobTitle');
+    const titleEl = document.querySelector('[data-testid="jobsearch-JobTitle"], .jobTitle, h1.jobTitle, .icl-u-xs-mb--xs.icl-u-xs-mt--none');
     if (titleEl?.textContent?.trim()) {
       title = titleEl.textContent.trim();
     }
     
-    const companyEl = document.querySelector('[data-testid="companyOverview"], .companyName, .company');
+    const companyEl = document.querySelector('[data-testid="companyOverview"], .companyName, .company, .jobsearch-CompanyReview--subtle');
     if (companyEl?.textContent?.trim()) {
       company = companyEl.textContent.trim();
     }
   }
   
-  // Try Glassdoor
-  if (hostname.includes('glassdoor.com')) {
-    const titleEl = document.querySelector('[data-testid="job-title"], .jobTitle, h1');
-    if (titleEl?.textContent?.trim()) {
-      title = titleEl.textContent.trim();
-    }
-    
-    const companyEl = document.querySelector('[data-testid="employer-name"], .employer-name');
-    if (companyEl?.textContent?.trim()) {
-      company = companyEl.textContent.trim();
-    }
-  }
-  
-  // Try Lever
-  if (hostname.includes('lever.co')) {
-    const titleEl = document.querySelector('h1');
-    if (titleEl?.textContent?.trim()) {
-      title = titleEl.textContent.trim();
-    }
-    
-    const companyEl = document.querySelector('.posting-company, .company-logo-name');
-    if (companyEl?.textContent?.trim()) {
-      company = companyEl.textContent.trim();
-    }
-  }
-  
-  // Try Greenhouse
-  if (hostname.includes('greenhouse.io')) {
-    const titleEl = document.querySelector('.app-title h1, .job-title h1');
-    if (titleEl?.textContent?.trim()) {
-      title = titleEl.textContent.trim();
-    }
-    
-    const companyEl = document.querySelector('.company-name, .company-logo-name');
-    if (companyEl?.textContent?.trim()) {
-      company = companyEl.textContent.trim();
-    }
-  }
-  
-  // Generic fallback: use page title
+  // Generic fallback: use page title and meta tags
   if (!title || title === 'Unknown Title') {
-    const pageTitle = document.title
-      .replace(/[-|–|—|:|•|LinkedIn|Indeed|Jobs|Careers|Apply]/g, '|')
-      .split('|')
-      .filter(t => t.trim().length > 3)[0] || '';
-    
-    if (pageTitle.length > 3) {
-      title = pageTitle.trim();
+    // Try meta og:title
+    const metaTitle = document.querySelector('meta[property="og:title"]')?.content;
+    if (metaTitle && metaTitle.length > 5) {
+      title = metaTitle;
+    } else {
+      const pageTitle = document.title
+        .replace(/[-|–|—|:|•|LinkedIn|Indeed|Jobs|Careers|Apply]/g, '|')
+        .split('|')
+        .filter(t => t.trim().length > 3)[0] || '';
+      
+      if (pageTitle.length > 3) {
+        title = pageTitle.trim();
+      }
     }
   }
   
   // Clean up title
   title = title.replace(/^\d+\.\s*/, '').replace(/\s+/g, ' ').trim();
+  // Remove "at CompanyName" from title if it exists
+  if (company && title.toLowerCase().includes(' at ' + company.toLowerCase())) {
+    title = title.substring(0, title.toLowerCase().indexOf(' at ')).trim();
+  }
   
   // Try to extract company from page title if still unknown
   if (!company || company === 'Unknown') {
-    const title = document.title;
+    const pTitle = document.title;
     // Try pattern like "Company - Job Title" or "Job Title at Company"
-    const atMatch = title.match(/at\s+([A-Z][a-zA-Z\s]+?)(?:\s*[-|]|$)/i);
-    const dashMatch = title.match(/^([A-Z][a-zA-Z\s]+?)\s*[-–—]\s*/i);
+    const atMatch = pTitle.match(/at\s+([A-Z][a-zA-Z\s]+?)(?:\s*[-|]|$)/i);
+    const dashMatch = pTitle.match(/^([A-Z][a-zA-Z\s]+?)\s*[-–—]\s*/i);
     
     if (atMatch) {
       company = atMatch[1].trim();
@@ -158,8 +138,9 @@ function extractJobData() {
   title = title || document.title.split(' ').slice(0, 6).join(' ') || 'Unknown Job';
   company = company || hostname.replace('www.', '').split('.')[0].charAt(0).toUpperCase() + hostname.replace('www.', '').split('.')[0].slice(1);
   
-  // Clean company name
+  // Clean company name - remove things like "Inc.", "Corp.", etc. if they are messy
   company = company.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/\s+/g, ' ').trim();
+  company = company.split('\n')[0].trim();
   
   console.log('OfferPath: Extracted - Title:', title, '| Company:', company);
   
@@ -201,11 +182,23 @@ function createFloatButton() {
   
   btn.onclick = () => {
     const data = extractJobData();
-    chrome.runtime.sendMessage({ action: 'saveJobApplication', data });
-    btn.querySelector('button').innerHTML = '✓';
-    setTimeout(() => {
-      btn.querySelector('button').innerHTML = '<svg width="24" height="24" viewBox="0 0 32 32" fill="white"><path d="M8 20L14 14L18 18L24 10" stroke="#6366f1" stroke-width="2.5" fill="none"/></svg>';
-    }, 1500);
+    chrome.runtime.sendMessage({ action: 'saveJobApplication', data }, (response) => {
+      if (response?.success) {
+        if (response.local) {
+          btn.querySelector('button').innerHTML = '⚠';
+          btn.title = 'Saved locally (offline)';
+        } else {
+          btn.querySelector('button').innerHTML = '✓';
+        }
+      } else {
+        btn.querySelector('button').innerHTML = '✕';
+      }
+      
+      setTimeout(() => {
+        btn.querySelector('button').innerHTML = '<svg width="24" height="24" viewBox="0 0 32 32" fill="white"><path d="M8 20L14 14L18 18L24 10" stroke="#6366f1" stroke-width="2.5" fill="none"/></svg>';
+        btn.title = '';
+      }, 2000);
+    });
   };
   
   document.body.appendChild(btn);

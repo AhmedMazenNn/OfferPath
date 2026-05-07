@@ -22,18 +22,22 @@ const AppContext = createContext<AppContextType | undefined>(undefined)
 const ACCESS_TOKEN_KEY = 'offerpath_access_token'
 const REFRESH_TOKEN_KEY = 'offerpath_refresh_token'
 const USER_KEY = 'offerpath_user'
+const API_URL = import.meta.env.VITE_API_URL || 'https://ahmedmazen-offer-path-backend.hf.space'
 
-const syncWithExtension = (token: string | null, user: User | null) => {
+const syncWithExtension = (accessToken: string | null, refreshToken: string | null, user: User | null) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const win = window as any
   if (win?.chrome?.storage) {
-    if (token && user) {
+    if (accessToken && refreshToken && user) {
       win.chrome.storage.local.set({
-        authToken: token,
-        user: user
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+        user: user,
+        tokenExpiry: String(Date.now() + 30 * 60 * 1000), // 30 min default
+        apiUrl: API_URL
       })
     } else {
-      win.chrome.storage.local.remove(['authToken', 'user'])
+      win.chrome.storage.local.remove(['accessToken', 'refreshToken', 'user', 'tokenExpiry', 'apiUrl'])
     }
   }
 }
@@ -69,8 +73,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       logout()
     }
     window.addEventListener('logout', handleLogout)
-    return () => window.removeEventListener('logout', handleLogout)
-  }, [])
+    
+    // Refetch applications when window gains focus (e.g. after using extension)
+    const handleFocus = () => {
+      if (user) {
+        loadApplications()
+      }
+    }
+    window.addEventListener('focus', handleFocus)
+    
+    return () => {
+      window.removeEventListener('logout', handleLogout)
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [user])
 
   useEffect(() => {
     const validateAndLoad = async () => {
@@ -81,6 +97,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         try {
           await authApi.getMe()
           await loadApplications()
+          syncWithExtension(accessToken, refreshToken, user)
         } catch (error) {
           console.error('Session validation failed:', error)
           logout()
@@ -104,7 +121,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(USER_KEY, JSON.stringify(userWithAdmin))
       setUser(userWithAdmin)
       await loadApplications()
-      syncWithExtension(data.access_token, userWithAdmin)
+      syncWithExtension(data.access_token, data.refresh_token, userWithAdmin)
     } catch (error) {
       console.error('Login failed:', error)
       throw error
@@ -121,7 +138,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(USER_KEY, JSON.stringify(userWithAdmin))
       setUser(userWithAdmin)
       await loadApplications()
-      syncWithExtension(data.access_token, userWithAdmin)
+      syncWithExtension(data.access_token, data.refresh_token, userWithAdmin)
     } catch (error) {
       console.error('Signup failed:', error)
       throw error
@@ -138,7 +155,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem(REFRESH_TOKEN_KEY)
     localStorage.removeItem(USER_KEY)
     setUser(null)
-    syncWithExtension(null, null)
+    syncWithExtension(null, null, null)
   }, [])
 
   const addApplication = async (appData: Omit<Application, 'id' | 'timeline' | 'lastUpdated'>): Promise<Application> => {
@@ -213,7 +230,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(USER_KEY, JSON.stringify(userWithAdmin))
       setUser(userWithAdmin)
       const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY)
-      syncWithExtension(accessToken, userWithAdmin)
+      const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
+      syncWithExtension(accessToken, refreshToken, userWithAdmin)
     } catch (error) {
       console.error('Failed to update profile:', error)
       throw error

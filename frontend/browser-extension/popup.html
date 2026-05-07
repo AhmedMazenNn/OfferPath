@@ -79,6 +79,35 @@
         </svg>
         <p>Saved!</p>
       </div>
+
+      <!-- Applications List -->
+      <div id="apps-list-section" class="section">
+        <div class="section-header">
+          <h3 class="section-title">Applications</h3>
+        </div>
+        
+        <div class="list-controls">
+          <input type="text" id="list-search" placeholder="Search..." class="input input-sm" />
+          <select id="list-filter" class="input input-sm select-sm">
+            <option value="all">All</option>
+            <option value="applied">Applied</option>
+            <option value="interview">Interview</option>
+            <option value="offer">Offer</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
+
+        <div id="apps-list" class="apps-list">
+          <!-- Apps will be injected here -->
+          <div class="loading-apps">Loading...</div>
+        </div>
+
+        <div id="list-pagination" class="pagination-controls hidden">
+          <button id="prev-page" class="btn-icon">←</button>
+          <span id="page-info">1 / 1</span>
+          <button id="next-page" class="btn-icon">→</button>
+        </div>
+      </div>
     </div>
 
     <!-- Footer -->
